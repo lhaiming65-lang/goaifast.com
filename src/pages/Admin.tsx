@@ -964,16 +964,85 @@ export default function Admin() {
     </section>
   );
 
-  const renderAnalytics = () => (
-    <section className="rounded-lg border border-orange-100 bg-white p-5 shadow-sm">
-      <h2 className="text-lg font-black text-slate-950">数据埋点</h2>
-      <div className="mt-4 grid gap-4 md:grid-cols-4">
-        {["访问首页", "查看商品", "加入结算", "支付完成"].map((label, index) => (
-          <div key={label} className="rounded-lg bg-orange-50 p-4"><p className="text-sm text-orange-800">{label}</p><p className="mt-2 text-2xl font-black">{[1296, 643, 214, 78][index]}</p></div>
-        ))}
-      </div>
-    </section>
-  );
+  const renderAnalytics = () => {
+    const events = store.analyticsEvents ?? [];
+    const totals = {
+      home: events.reduce((sum, event) => sum + event.homeViews, 0),
+      product: events.reduce((sum, event) => sum + event.productViews, 0),
+      checkout: events.reduce((sum, event) => sum + event.checkoutAdds, 0),
+      paid: events.reduce((sum, event) => sum + event.paidOrders, 0),
+      amount: events.reduce((sum, event) => sum + event.totalAmount, 0),
+    };
+    return (
+      <section className="rounded-lg border border-orange-100 bg-white shadow-sm">
+        <div className="border-b border-orange-100 p-5">
+          <h2 className="text-lg font-black text-slate-950">数据埋点</h2>
+          <p className="text-sm text-slate-500">查看每个用户或访客的 IP、来源、浏览商品、转化和支付情况。</p>
+          <div className="mt-4 grid gap-4 md:grid-cols-5">
+            {[
+              ["访问首页", totals.home],
+              ["查看商品", totals.product],
+              ["加入结算", totals.checkout],
+              ["支付完成", totals.paid],
+              ["转化金额", `$${totals.amount.toFixed(2)}`],
+            ].map(([label, value]) => (
+              <div key={label} className="rounded-lg bg-orange-50 p-4"><p className="text-sm text-orange-800">{label}</p><p className="mt-2 text-2xl font-black">{value}</p></div>
+            ))}
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[1180px] text-left text-sm">
+            <thead className="bg-orange-50 text-slate-600">
+              <tr>
+                <th className="p-4">用户</th>
+                <th>IP / 国家</th>
+                <th>设备</th>
+                <th>来源</th>
+                <th>浏览商品</th>
+                <th>行为</th>
+                <th>支付</th>
+                <th>最后访问</th>
+                <th>状态</th>
+                <th>备注</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {events.map((event) => (
+                <tr key={event.id} className="align-top">
+                  <td className="p-4">
+                    <p className="font-black text-slate-950">{event.customerName || event.customerEmail}</p>
+                    <p className="text-xs text-slate-500">{event.customerEmail}</p>
+                  </td>
+                  <td><p className="font-bold">{event.ip}</p><p className="text-xs text-slate-500">{event.country}</p></td>
+                  <td>{event.device}</td>
+                  <td>{event.source}</td>
+                  <td>
+                    <div className="flex max-w-xs flex-wrap gap-1">
+                      {event.viewedProducts.map((product) => <span key={product} className="rounded-full bg-slate-100 px-2 py-1 text-xs font-bold text-slate-600">{product}</span>)}
+                    </div>
+                  </td>
+                  <td>
+                    <p>首页 {event.homeViews}</p>
+                    <p>商品 {event.productViews}</p>
+                    <p>结算 {event.checkoutAdds}</p>
+                  </td>
+                  <td><p className="font-black">${event.totalAmount.toFixed(2)}</p><p className="text-xs text-slate-500">{event.paidOrders} 单</p></td>
+                  <td>{event.lastSeenAt}</td>
+                  <td>
+                    <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${event.status === "converted" ? "bg-emerald-50 text-emerald-700" : event.status === "risk" ? "bg-rose-50 text-rose-700" : "bg-sky-50 text-sky-700"}`}>
+                      {event.status === "converted" ? "已转化" : event.status === "risk" ? "风险" : "活跃"}
+                    </span>
+                  </td>
+                  <td className="max-w-xs text-slate-500">{event.note || "无"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {events.length === 0 && <div className="p-10 text-center text-sm text-slate-500">暂无用户行为明细</div>}
+        </div>
+      </section>
+    );
+  };
 
   const renderSettings = () => (
     <section className="rounded-lg border border-orange-100 bg-white p-5 shadow-sm">

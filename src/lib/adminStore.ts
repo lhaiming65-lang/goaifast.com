@@ -91,6 +91,25 @@ export interface IpPricingRule {
   note?: string;
 }
 
+export interface AnalyticsEvent {
+  id: string;
+  customerEmail: string;
+  customerName?: string;
+  ip: string;
+  country: string;
+  device: string;
+  source: string;
+  viewedProducts: string[];
+  homeViews: number;
+  productViews: number;
+  checkoutAdds: number;
+  paidOrders: number;
+  totalAmount: number;
+  lastSeenAt: string;
+  status: "active" | "converted" | "risk";
+  note?: string;
+}
+
 export interface AdminStore {
   products: AdminProduct[];
   inventory: InventoryAccount[];
@@ -100,6 +119,7 @@ export interface AdminStore {
   customers: Customer[];
   operators: Operator[];
   ipPricingRules: IpPricingRule[];
+  analyticsEvents: AnalyticsEvent[];
   settings: {
     siteName: string;
     announcement: string;
@@ -197,6 +217,62 @@ export function createSeedStore(): AdminStore {
         note: "把 targetValue 改成客户真实 IP 后启用。",
       },
     ],
+    analyticsEvents: [
+      {
+        id: "AN-1001",
+        customerEmail: "mika@example.com",
+        customerName: "Mika",
+        ip: "104.28.12.88",
+        country: "US",
+        device: "iPhone / Safari",
+        source: "自然搜索",
+        viewedProducts: ["Netflix", "YouTube Premium", "ChatGPT Plus"],
+        homeViews: 18,
+        productViews: 12,
+        checkoutAdds: 4,
+        paidOrders: 3,
+        totalAmount: 159.92,
+        lastSeenAt: "2026/7/22 10:00",
+        status: "converted",
+        note: "高价值客户，常看流媒体和 AI 产品。",
+      },
+      {
+        id: "AN-1002",
+        customerEmail: "chen@example.com",
+        customerName: "Chen",
+        ip: "43.129.44.21",
+        country: "CN",
+        device: "Windows / Chrome",
+        source: "TikTok 广告",
+        viewedProducts: ["ChatGPT Plus", "Claude Pro"],
+        homeViews: 9,
+        productViews: 7,
+        checkoutAdds: 2,
+        paidOrders: 1,
+        totalAmount: 39.98,
+        lastSeenAt: "2026/7/22 09:28",
+        status: "active",
+        note: "AI 产品意向明显。",
+      },
+      {
+        id: "AN-1003",
+        customerEmail: "risk@example.com",
+        customerName: "Risk User",
+        ip: "185.220.101.42",
+        country: "DE",
+        device: "Android / Chrome",
+        source: "优惠券",
+        viewedProducts: ["Steam Wallet", "PSN Card", "Netflix"],
+        homeViews: 32,
+        productViews: 19,
+        checkoutAdds: 6,
+        paidOrders: 1,
+        totalAmount: 19.99,
+        lastSeenAt: "2026/7/20 03:18",
+        status: "risk",
+        note: "频繁切换 IP，退款较多。",
+      },
+    ],
     settings: {
       siteName: "GoAifast",
       announcement: "全站数字商品极速交付，售后问题优先处理。",
@@ -276,6 +352,24 @@ function normalizeStore(candidate: AdminStore): AdminStore {
       priceMode: rule.priceMode || "fixed",
       priceValue: Number(rule.priceValue) || 0,
       originalPrice: rule.originalPrice ? Number(rule.originalPrice) : undefined,
+    })),
+    analyticsEvents: (candidate.analyticsEvents ?? []).map((event) => ({
+      ...event,
+      customerEmail: event.customerEmail || "guest@example.com",
+      customerName: event.customerName ?? event.customerEmail?.split("@")[0],
+      ip: event.ip || "0.0.0.0",
+      country: event.country || "未知",
+      device: event.device || "Unknown",
+      source: event.source || "未知",
+      viewedProducts: Array.isArray(event.viewedProducts) ? event.viewedProducts : [],
+      homeViews: Number(event.homeViews) || 0,
+      productViews: Number(event.productViews) || 0,
+      checkoutAdds: Number(event.checkoutAdds) || 0,
+      paidOrders: Number(event.paidOrders) || 0,
+      totalAmount: Number(event.totalAmount) || 0,
+      lastSeenAt: event.lastSeenAt || new Date().toLocaleString(),
+      status: event.status || "active",
+      note: event.note ?? "",
     })),
     updatedAt: candidate.updatedAt || new Date().toISOString(),
   };
