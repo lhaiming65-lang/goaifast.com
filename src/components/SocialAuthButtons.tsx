@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { lovable } from "@/integrations/lovable";
+import { appBaseUrl } from "@/lib/appUrl";
 import { Button } from "./ui/button";
 import { Loader2 } from "lucide-react";
 
@@ -48,7 +49,7 @@ export default function SocialAuthButtons({ redirectTo }: Props) {
     setLoading(provider);
     try {
       const result = await lovable.auth.signInWithOAuth(provider, {
-        redirect_uri: redirectTo || window.location.origin,
+        redirect_uri: redirectTo || appBaseUrl(),
       });
       if (result.error) {
         toast.error(result.error.message || "Sign-in failed");
