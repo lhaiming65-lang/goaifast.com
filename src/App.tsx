@@ -20,13 +20,14 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import Admin from "./pages/Admin";
 
 const queryClient = new QueryClient();
+const routerBaseName = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <BrowserRouter basename={import.meta.env.BASE_URL}>
+      <BrowserRouter basename={routerBaseName}>
         <AuthProvider>
           <Routes>
             <Route path="/" element={<Index />} />
