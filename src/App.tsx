@@ -30,6 +30,8 @@ const App = () => (
       <BrowserRouter basename={routerBaseName}>
         <AuthProvider>
           <Routes>
+            <Route index element={<Index />} />
+            <Route path="" element={<Index />} />
             <Route path="/" element={<Index />} />
             <Route path="/product/:slug" element={<ProductDetail />} />
             <Route path="/auth" element={<Auth />} />

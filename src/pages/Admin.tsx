@@ -1353,7 +1353,7 @@ export default function Admin() {
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div><h1 className="text-2xl font-black">{menu.find((item) => item.id === active)?.label}</h1><p className="text-sm text-slate-500">前后台联动演示 · 最后更新 {new Date(store.updatedAt).toLocaleString()}</p></div>
               <div className="flex items-center gap-2">
-                <a href="/" className="rounded-lg border border-orange-200 px-3 py-2 text-sm font-bold text-orange-700 hover:bg-orange-50">打开前台</a>
+                <a href={import.meta.env.BASE_URL || "/"} className="rounded-lg border border-orange-200 px-3 py-2 text-sm font-bold text-orange-700 hover:bg-orange-50">打开前台</a>
                 <button onClick={() => commit(loadAdminStore(), "数据已刷新")} className="rounded-lg bg-slate-950 px-3 py-2 text-sm font-bold text-white">刷新后台</button>
               </div>
             </div>
