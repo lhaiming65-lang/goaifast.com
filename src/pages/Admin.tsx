@@ -222,6 +222,14 @@ export default function Admin() {
   const [store, setStore] = useState<AdminStore>(() => loadAdminStore());
   const [active, setActive] = useState("dashboard");
   const [query, setQuery] = useState("");
+  const [inventoryQuery, setInventoryQuery] = useState("");
+  const [inventoryProductFilter, setInventoryProductFilter] = useState("all");
+  const [inventoryStatusFilter, setInventoryStatusFilter] = useState("all");
+  const [inventoryCustomerFilter, setInventoryCustomerFilter] = useState("");
+  const [inventoryCreatedFrom, setInventoryCreatedFrom] = useState("");
+  const [inventoryCreatedTo, setInventoryCreatedTo] = useState("");
+  const [inventoryExpireFrom, setInventoryExpireFrom] = useState("");
+  const [inventoryExpireTo, setInventoryExpireTo] = useState("");
   const [userQuery, setUserQuery] = useState("");
   const [userLevelFilter, setUserLevelFilter] = useState("all");
   const [userStatusFilter, setUserStatusFilter] = useState("all");
@@ -254,6 +262,30 @@ export default function Admin() {
   }, [store]);
 
   const filteredProducts = store.products.filter((product) => product.titleKey.toLowerCase().includes(query.trim().toLowerCase()));
+  const inDateRange = (value?: string, from?: string, to?: string) => {
+    if (!from && !to) return true;
+    if (!value) return false;
+    const normalized = value.replace(/\//g, "-");
+    const date = Date.parse(normalized);
+    const fromDate = from ? Date.parse(from) : NaN;
+    const toDate = to ? Date.parse(to) + 24 * 60 * 60 * 1000 - 1 : NaN;
+    if (!Number.isFinite(date)) return false;
+    if (Number.isFinite(fromDate) && date < fromDate) return false;
+    if (Number.isFinite(toDate) && date > toDate) return false;
+    return true;
+  };
+  const filteredInventory = store.inventory.filter((item) => {
+    const productName = productTitle(store, item.productId);
+    const q = inventoryQuery.trim().toLowerCase();
+    const matchQuery = !q || [item.id, productName, item.account, item.password, item.vehicleId, item.assignedCustomer, item.orderId]
+      .some((value) => (value ?? "").toLowerCase().includes(q));
+    const matchProduct = inventoryProductFilter === "all" || item.productId === inventoryProductFilter;
+    const matchStatus = inventoryStatusFilter === "all" || item.status === inventoryStatusFilter;
+    const matchCustomer = !inventoryCustomerFilter.trim() || (item.assignedCustomer ?? "").toLowerCase().includes(inventoryCustomerFilter.trim().toLowerCase());
+    const matchCreated = inDateRange(item.createdAt, inventoryCreatedFrom, inventoryCreatedTo);
+    const matchExpire = inDateRange(item.expireAt, inventoryExpireFrom, inventoryExpireTo);
+    return matchQuery && matchProduct && matchStatus && matchCustomer && matchCreated && matchExpire;
+  });
   const filteredCustomers = store.customers.filter((customer) => {
     const q = userQuery.trim().toLowerCase();
     const matchQuery = !q || [customer.email, customer.name, customer.phone, customer.source, customer.notes].some((value) => (value ?? "").toLowerCase().includes(q));
@@ -330,6 +362,11 @@ export default function Admin() {
       id: `ACC-${Date.now().toString().slice(-5)}`,
       productId: store.products[0]?.id ?? "",
       account: "",
+      password: "",
+      vehicleId: "",
+      createdAt: new Date().toLocaleString(),
+      assignedCustomer: "",
+      orderId: "",
       status: "available",
       expireAt: "2026-12-31",
     });
@@ -819,17 +856,48 @@ export default function Admin() {
 
   const renderInventory = () => (
     <section className="rounded-lg border border-orange-100 bg-white shadow-sm">
-      <div className="flex items-center justify-between border-b border-orange-100 p-5">
-        <h2 className="text-lg font-black text-slate-950">库存账号池</h2>
-        <button onClick={() => openInventoryModal()} className="inline-flex items-center gap-2 rounded-lg bg-orange-600 px-3 py-2 text-sm font-bold text-white"><Plus className="h-4 w-4" /> 新增账号</button>
+      <div className="flex flex-col gap-4 border-b border-orange-100 p-5">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-black text-slate-950">库存账号池</h2>
+            <p className="text-sm text-slate-500">按创建时间、车位ID、账号、密码、购买客户、订单和状态快速查询。</p>
+          </div>
+          <button onClick={() => openInventoryModal()} className="inline-flex items-center gap-2 rounded-lg bg-orange-600 px-3 py-2 text-sm font-bold text-white"><Plus className="h-4 w-4" /> 新增账号</button>
+        </div>
+        <div className="grid gap-3 lg:grid-cols-6">
+          <div className="relative lg:col-span-2">
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+            <input value={inventoryQuery} onChange={(event) => setInventoryQuery(event.target.value)} className="h-9 w-full rounded-lg border border-orange-100 pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-orange-200" placeholder="编号、车位ID、账号、密码、客户、订单" />
+          </div>
+          <select value={inventoryProductFilter} onChange={(event) => setInventoryProductFilter(event.target.value)} className="h-9 rounded-lg border border-orange-100 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-orange-200">
+            <option value="all">全部商品</option>
+            {store.products.map((product) => <option key={product.id} value={product.id}>{product.titleKey}</option>)}
+          </select>
+          <select value={inventoryStatusFilter} onChange={(event) => setInventoryStatusFilter(event.target.value)} className="h-9 rounded-lg border border-orange-100 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-orange-200">
+            <option value="all">全部状态</option>
+            <option value="available">可交付</option>
+            <option value="locked">锁定</option>
+            <option value="used">已交付</option>
+            <option value="banned">禁用</option>
+          </select>
+          <input value={inventoryCustomerFilter} onChange={(event) => setInventoryCustomerFilter(event.target.value)} className="h-9 rounded-lg border border-orange-100 px-3 text-sm outline-none focus:ring-2 focus:ring-orange-200" placeholder="购买客户邮箱" />
+          <button onClick={() => { setInventoryQuery(""); setInventoryProductFilter("all"); setInventoryStatusFilter("all"); setInventoryCustomerFilter(""); setInventoryCreatedFrom(""); setInventoryCreatedTo(""); setInventoryExpireFrom(""); setInventoryExpireTo(""); }} className="h-9 rounded-lg border border-orange-200 px-3 text-sm font-bold text-orange-700 hover:bg-orange-50">重置筛选</button>
+        </div>
+        <div className="grid gap-3 md:grid-cols-4">
+          <label className="text-xs font-bold text-slate-500">创建开始<input type="date" value={inventoryCreatedFrom} onChange={(event) => setInventoryCreatedFrom(event.target.value)} className="mt-1 h-9 w-full rounded-lg border border-orange-100 px-3 text-sm font-normal outline-none focus:ring-2 focus:ring-orange-200" /></label>
+          <label className="text-xs font-bold text-slate-500">创建结束<input type="date" value={inventoryCreatedTo} onChange={(event) => setInventoryCreatedTo(event.target.value)} className="mt-1 h-9 w-full rounded-lg border border-orange-100 px-3 text-sm font-normal outline-none focus:ring-2 focus:ring-orange-200" /></label>
+          <label className="text-xs font-bold text-slate-500">到期开始<input type="date" value={inventoryExpireFrom} onChange={(event) => setInventoryExpireFrom(event.target.value)} className="mt-1 h-9 w-full rounded-lg border border-orange-100 px-3 text-sm font-normal outline-none focus:ring-2 focus:ring-orange-200" /></label>
+          <label className="text-xs font-bold text-slate-500">到期结束<input type="date" value={inventoryExpireTo} onChange={(event) => setInventoryExpireTo(event.target.value)} className="mt-1 h-9 w-full rounded-lg border border-orange-100 px-3 text-sm font-normal outline-none focus:ring-2 focus:ring-orange-200" /></label>
+        </div>
+        <p className="text-xs font-bold text-slate-500">当前显示 {filteredInventory.length} / {store.inventory.length} 条库存</p>
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[760px] text-left text-sm">
-          <thead className="bg-orange-50 text-slate-600"><tr><th className="p-4">编号</th><th>商品</th><th>账号</th><th>到期</th><th>状态</th><th>操作</th></tr></thead>
+        <table className="w-full min-w-[1320px] text-left text-sm">
+          <thead className="bg-orange-50 text-slate-600"><tr><th className="p-4">编号</th><th>商品</th><th>车位/车辆ID</th><th>账号</th><th>密码</th><th>购买客户</th><th>订单号</th><th>创建时间</th><th>到期</th><th>状态</th><th>操作</th></tr></thead>
           <tbody className="divide-y divide-slate-100">
-            {store.inventory.map((item) => (
+            {filteredInventory.map((item) => (
               <tr key={item.id}>
-                <td className="p-4 font-bold">{item.id}</td><td>{productTitle(store, item.productId)}</td><td>{item.account}</td><td>{item.expireAt}</td><td><Badge status={item.status} /></td>
+                <td className="p-4 font-bold">{item.id}</td><td>{productTitle(store, item.productId)}</td><td>{item.vehicleId || "-"}</td><td>{item.account}</td><td>{item.password || "-"}</td><td>{item.assignedCustomer || "未分配"}</td><td>{item.orderId || "-"}</td><td>{item.createdAt || "-"}</td><td>{item.expireAt}</td><td><Badge status={item.status} /></td>
                 <td className="space-x-3 font-bold text-orange-700">
                   <button onClick={() => openInventoryModal(item)}>编辑</button>
                   <button onClick={() => openActionModal({ kind: "inventory-release", targetId: item.id, title: "释放库存账号", targetName: `${item.id} · ${productTitle(store, item.productId)}`, currentState: statusText[item.status] ?? item.status, nextState: "可交付", rule: "释放后该库存可被自动交付系统再次分配。", impact: "会进入可售库存池，前台库存统计可继续使用。" })}>释放</button>
@@ -840,6 +908,7 @@ export default function Admin() {
             ))}
           </tbody>
         </table>
+        {filteredInventory.length === 0 && <div className="p-10 text-center text-sm text-slate-500">没有符合筛选条件的库存账号</div>}
       </div>
     </section>
   );
@@ -1132,9 +1201,14 @@ export default function Admin() {
     <div className="grid gap-4 md:grid-cols-2">
       <label className="text-sm font-bold text-slate-700">商品<select value={inventoryForm.productId} onChange={(event) => setInventoryForm({ ...inventoryForm, productId: event.target.value })} className={fieldClass}>{store.products.map((product) => <option key={product.id} value={product.id}>{product.titleKey}</option>)}</select></label>
       <label className="text-sm font-bold text-slate-700">状态<select value={inventoryForm.status} onChange={(event) => setInventoryForm({ ...inventoryForm, status: event.target.value as InventoryAccount["status"] })} className={fieldClass}><option value="available">可交付</option><option value="locked">锁定</option><option value="used">已交付</option><option value="banned">禁用</option></select></label>
-      <label className="md:col-span-2 text-sm font-bold text-slate-700">账号/卡密<textarea value={inventoryForm.account} onChange={(event) => setInventoryForm({ ...inventoryForm, account: event.target.value })} className={`${fieldClass} h-28`} placeholder="账号、密码、卡密或交付备注" /></label>
-      <label className="text-sm font-bold text-slate-700">到期时间<input value={inventoryForm.expireAt} onChange={(event) => setInventoryForm({ ...inventoryForm, expireAt: event.target.value })} className={fieldClass} placeholder="2026-12-31" /></label>
       <label className="text-sm font-bold text-slate-700">库存编号<input value={inventoryForm.id} onChange={(event) => setInventoryForm({ ...inventoryForm, id: event.target.value })} className={fieldClass} /></label>
+      <label className="text-sm font-bold text-slate-700">车位/车辆ID<input value={inventoryForm.vehicleId ?? ""} onChange={(event) => setInventoryForm({ ...inventoryForm, vehicleId: event.target.value })} className={fieldClass} placeholder="例如 NETFLIX-SEAT-01" /></label>
+      <label className="text-sm font-bold text-slate-700">账号<input value={inventoryForm.account} onChange={(event) => setInventoryForm({ ...inventoryForm, account: event.target.value })} className={fieldClass} placeholder="账号邮箱、登录名或卡密" /></label>
+      <label className="text-sm font-bold text-slate-700">密码<input value={inventoryForm.password ?? ""} onChange={(event) => setInventoryForm({ ...inventoryForm, password: event.target.value })} className={fieldClass} placeholder="账号密码或兑换码密码" /></label>
+      <label className="text-sm font-bold text-slate-700">购买客户<input value={inventoryForm.assignedCustomer ?? ""} onChange={(event) => setInventoryForm({ ...inventoryForm, assignedCustomer: event.target.value })} className={fieldClass} placeholder="customer@example.com" /></label>
+      <label className="text-sm font-bold text-slate-700">关联订单号<input value={inventoryForm.orderId ?? ""} onChange={(event) => setInventoryForm({ ...inventoryForm, orderId: event.target.value })} className={fieldClass} placeholder="GO-20260722-1001" /></label>
+      <label className="text-sm font-bold text-slate-700">创建时间<input value={inventoryForm.createdAt ?? ""} onChange={(event) => setInventoryForm({ ...inventoryForm, createdAt: event.target.value })} className={fieldClass} placeholder="2026/7/22 10:00" /></label>
+      <label className="text-sm font-bold text-slate-700">到期时间<input value={inventoryForm.expireAt} onChange={(event) => setInventoryForm({ ...inventoryForm, expireAt: event.target.value })} className={fieldClass} placeholder="2026-12-31" /></label>
     </div>
   )) : null;
 

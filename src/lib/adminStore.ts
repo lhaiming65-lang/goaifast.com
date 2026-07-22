@@ -25,6 +25,11 @@ export interface InventoryAccount {
   id: string;
   productId: string;
   account: string;
+  password?: string;
+  vehicleId?: string;
+  createdAt?: string;
+  assignedCustomer?: string;
+  orderId?: string;
   status: "available" | "locked" | "used" | "banned";
   expireAt: string;
 }
@@ -176,6 +181,11 @@ export function createSeedStore(): AdminStore {
       id: `ACC-${String(index + 1).padStart(4, "0")}`,
       productId: product.id,
       account: `${product.id}-${1000 + index}@goaifast.local`,
+      password: `Gf-${2026 + index}-${String(1000 + index)}`,
+      vehicleId: `${product.id.toUpperCase()}-SEAT-${String(index + 1).padStart(2, "0")}`,
+      createdAt: `2026/7/${String(10 + index).padStart(2, "0")} 10:00`,
+      assignedCustomer: index % 3 === 0 ? "mika@example.com" : index % 3 === 1 ? "chen@example.com" : "",
+      orderId: index % 3 === 0 ? "GO-20260722-1001" : index % 3 === 1 ? "GO-20260722-1002" : "",
       status: index % 4 === 0 ? "locked" : "available",
       expireAt: `2026-${String(8 + (index % 4)).padStart(2, "0")}-${String(10 + index).padStart(2, "0")}`,
     })),
@@ -380,6 +390,14 @@ function normalizeStore(candidate: AdminStore): AdminStore {
       status: product.status || "enabled",
       deliveryMode: product.deliveryMode || "mixed",
       cost: product.cost ?? Math.round(product.price * 0.58 * 100) / 100,
+    })),
+    inventory: (candidate.inventory ?? []).map((item, index) => ({
+      ...item,
+      password: item.password ?? `Gf-${2026 + index}-${String(1000 + index)}`,
+      vehicleId: item.vehicleId ?? `${item.productId.toUpperCase()}-SEAT-${String(index + 1).padStart(2, "0")}`,
+      createdAt: item.createdAt ?? `2026/7/${String(10 + (index % 18)).padStart(2, "0")} 10:00`,
+      assignedCustomer: item.assignedCustomer ?? "",
+      orderId: item.orderId ?? "",
     })),
     customers: candidate.customers.map((customer) => ({
       ...customer,
