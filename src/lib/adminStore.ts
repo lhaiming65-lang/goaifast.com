@@ -8,6 +8,8 @@ export type { ProductBadge };
 export type OrderStatus = "pending" | "delivered" | "refund";
 export type TicketStatus = "open" | "closed";
 export type SupplierStatus = "pending" | "approved" | "rejected";
+export type IpPriceTargetType = "ip" | "cidr" | "country" | "all";
+export type IpPriceMode = "fixed" | "percent";
 
 export interface AdminProduct extends Product {
   id: string;
@@ -75,6 +77,20 @@ export interface Operator {
   enabled: boolean;
 }
 
+export interface IpPricingRule {
+  id: string;
+  name: string;
+  enabled: boolean;
+  priority: number;
+  targetType: IpPriceTargetType;
+  targetValue: string;
+  productId: string;
+  priceMode: IpPriceMode;
+  priceValue: number;
+  originalPrice?: number;
+  note?: string;
+}
+
 export interface AdminStore {
   products: AdminProduct[];
   inventory: InventoryAccount[];
@@ -83,6 +99,7 @@ export interface AdminStore {
   suppliers: Supplier[];
   customers: Customer[];
   operators: Operator[];
+  ipPricingRules: IpPricingRule[];
   settings: {
     siteName: string;
     announcement: string;
@@ -152,6 +169,34 @@ export function createSeedStore(): AdminStore {
       { id: "ADM-1", name: "总管理员", role: "全部权限", enabled: true },
       { id: "ADM-2", name: "客服主管", role: "订单/工单", enabled: true },
     ],
+    ipPricingRules: [
+      {
+        id: "IPR-1001",
+        name: "美国访客 ChatGPT 价格",
+        enabled: true,
+        priority: 20,
+        targetType: "country",
+        targetValue: "US",
+        productId: "chatgpt-plus",
+        priceMode: "fixed",
+        priceValue: 18.99,
+        originalPrice: 29.99,
+        note: "示例：美国 IP 访问时 ChatGPT Plus 显示独立价格。",
+      },
+      {
+        id: "IPR-1002",
+        name: "指定 IP 测试价",
+        enabled: false,
+        priority: 50,
+        targetType: "ip",
+        targetValue: "8.8.8.8",
+        productId: "netflix",
+        priceMode: "fixed",
+        priceValue: 19.99,
+        originalPrice: 49.99,
+        note: "把 targetValue 改成客户真实 IP 后启用。",
+      },
+    ],
     settings: {
       siteName: "GoAifast",
       announcement: "全站数字商品极速交付，售后问题优先处理。",
@@ -178,8 +223,22 @@ export function buildPublicStore(store: AdminStore) {
         imageUrl,
         subtitle,
         description,
-      })),
+    })),
     categories,
+    ipPricingRules: store.ipPricingRules
+      .filter((rule) => rule.enabled)
+      .map(({ id, name, priority, targetType, targetValue, productId, priceMode, priceValue, originalPrice, note }) => ({
+        id,
+        name,
+        priority,
+        targetType,
+        targetValue,
+        productId,
+        priceMode,
+        priceValue,
+        originalPrice,
+        note,
+      })),
     settings: store.settings,
     updatedAt: store.updatedAt,
   };
@@ -206,6 +265,17 @@ function normalizeStore(candidate: AdminStore): AdminStore {
       source: customer.source ?? "后台导入",
       riskTag: customer.riskTag ?? (customer.status === "banned" ? "high" : "normal"),
       notes: customer.notes ?? "",
+    })),
+    ipPricingRules: (candidate.ipPricingRules ?? []).map((rule) => ({
+      ...rule,
+      enabled: rule.enabled ?? true,
+      priority: Number(rule.priority) || 0,
+      targetType: rule.targetType || "ip",
+      targetValue: rule.targetValue || "",
+      productId: rule.productId || "all",
+      priceMode: rule.priceMode || "fixed",
+      priceValue: Number(rule.priceValue) || 0,
+      originalPrice: rule.originalPrice ? Number(rule.originalPrice) : undefined,
     })),
     updatedAt: candidate.updatedAt || new Date().toISOString(),
   };

@@ -81,6 +81,8 @@ export default function FeaturedProducts({ selectedCategory, onSelectCategory, s
                 badge={product.badge ? badgeMap[product.badge] : undefined}
                 imageUrl={product.imageUrl}
                 subtitle={product.subtitle}
+                ipPricingRuleName={product.ipPricingRuleName}
+                ipPricingNote={product.ipPricingNote}
                 features={product.delivery ? [product.delivery, t("products.autoDeliver"), t("products.stableAccount")] : undefined}
               />
             ))}

@@ -35,6 +35,8 @@ export default function ProductDetail() {
   const color = syncedProduct?.color || state.color || "bg-gradient-to-br from-blue-500 to-indigo-600";
   const imageUrl = syncedProduct?.imageUrl || state.imageUrl;
   const initial = state.initial || title.charAt(0);
+  const ipPricingRuleName = syncedProduct?.ipPricingRuleName;
+  const ipPricingNote = syncedProduct?.ipPricingNote;
 
   const [months, setMonths] = useState(3);
   const [couponOpen, setCouponOpen] = useState(false);
@@ -212,6 +214,12 @@ export default function ProductDetail() {
                   {formatPrice(monthly)} / {t("productDetail.month", "month")}
                 </div>
               </div>
+              {ipPricingRuleName && (
+                <div className="mb-4 rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm font-semibold text-orange-700">
+                  IP 定价已生效：{ipPricingRuleName}
+                  {ipPricingNote ? <span className="block text-xs font-normal text-orange-600">{ipPricingNote}</span> : null}
+                </div>
+              )}
 
               <button
                 type="button"

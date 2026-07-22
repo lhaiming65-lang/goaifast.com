@@ -13,9 +13,11 @@ interface ProductProps {
   features?: string[];
   imageUrl?: string;
   subtitle?: string;
+  ipPricingRuleName?: string;
+  ipPricingNote?: string;
 }
 
-export default function ProductCard({ title, price, originalPrice, color, badge, features, imageUrl, subtitle }: ProductProps) {
+export default function ProductCard({ title, price, originalPrice, color, badge, features, imageUrl, subtitle, ipPricingRuleName, ipPricingNote }: ProductProps) {
   const { t } = useTranslation();
   const { formatPrice } = useLocale();
   const discount = Math.round(((originalPrice - price) / originalPrice) * 100);
@@ -65,6 +67,12 @@ export default function ProductCard({ title, price, originalPrice, color, badge,
           <span className="text-sm text-gray-500 font-medium">{t("products.perMonth")}</span>
           <span className="text-xs text-gray-400 line-through ms-auto" dir="ltr">{t("products.original")} {formatPrice(originalPrice)}</span>
         </div>
+        {ipPricingRuleName && (
+          <div className="mb-4 rounded-xl border border-orange-200 bg-orange-50 px-3 py-2 text-xs font-semibold text-orange-700">
+            IP 定价已生效：{ipPricingRuleName}
+            {ipPricingNote ? <span className="block font-normal text-orange-600">{ipPricingNote}</span> : null}
+          </div>
+        )}
 
         <div className="space-y-2 mb-4 rounded-xl bg-blue-50/60 dark:bg-blue-950/20 p-3">
           {visible.map((f, i) => (

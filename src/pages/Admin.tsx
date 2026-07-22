@@ -35,6 +35,7 @@ import {
   type AdminStore,
   type Customer,
   type InventoryAccount,
+  type IpPricingRule,
   type Operator,
   type ProductBadge,
   type Supplier,
@@ -44,6 +45,7 @@ import {
 const menu = [
   { id: "dashboard", label: "数据看板", icon: LayoutDashboard },
   { id: "products", label: "商品与定价", icon: Store },
+  { id: "ip-pricing", label: "IP 定价", icon: SlidersHorizontal },
   { id: "inventory", label: "库存账号池", icon: PackageCheck },
   { id: "orders", label: "订单管理", icon: ClipboardList },
   { id: "tickets", label: "客服工单", icon: Headphones },
@@ -122,6 +124,11 @@ type TicketFormState = Ticket;
 type SupplierFormState = Omit<Supplier, "price" | "stock"> & { price: string; stock: string };
 type CustomerFormState = Customer;
 type OperatorFormState = Operator;
+type IpPricingFormState = Omit<IpPricingRule, "priority" | "priceValue" | "originalPrice"> & {
+  priority: string;
+  priceValue: string;
+  originalPrice: string;
+};
 type LevelFormState = {
   customerId: string;
   email: string;
@@ -224,6 +231,7 @@ export default function Admin() {
   const [supplierForm, setSupplierForm] = useState<SupplierFormState | null>(null);
   const [customerForm, setCustomerForm] = useState<CustomerFormState | null>(null);
   const [operatorForm, setOperatorForm] = useState<OperatorFormState | null>(null);
+  const [ipPricingForm, setIpPricingForm] = useState<IpPricingFormState | null>(null);
   const [levelForm, setLevelForm] = useState<LevelFormState | null>(null);
   const [actionForm, setActionForm] = useState<ActionFormState | null>(null);
 
@@ -591,6 +599,58 @@ export default function Admin() {
     setOperatorForm(null);
   };
 
+  const openIpPricingModal = (rule?: IpPricingRule) => {
+    setIpPricingForm(rule ? {
+      ...rule,
+      priority: String(rule.priority),
+      priceValue: String(rule.priceValue),
+      originalPrice: rule.originalPrice ? String(rule.originalPrice) : "",
+    } : {
+      id: `IPR-${Date.now().toString().slice(-5)}`,
+      name: "",
+      enabled: true,
+      priority: "10",
+      targetType: "ip",
+      targetValue: "",
+      productId: store.products[0]?.id ?? "all",
+      priceMode: "fixed",
+      priceValue: "",
+      originalPrice: "",
+      note: "",
+    });
+  };
+
+  const saveIpPricingForm = () => {
+    if (!ipPricingForm?.name.trim() || !ipPricingForm.targetValue.trim()) {
+      setNotice("请填写规则名称和 IP / 地区条件");
+      return;
+    }
+    const priceValue = Number(ipPricingForm.priceValue);
+    const priority = Number(ipPricingForm.priority);
+    const originalPrice = ipPricingForm.originalPrice ? Number(ipPricingForm.originalPrice) : undefined;
+    if (![priceValue, priority].every(Number.isFinite) || (originalPrice !== undefined && !Number.isFinite(originalPrice))) {
+      setNotice("优先级、价格和原价需要填写数字");
+      return;
+    }
+    const nextRule: IpPricingRule = {
+      ...ipPricingForm,
+      priority,
+      priceValue,
+      originalPrice,
+      targetValue: ipPricingForm.targetValue.trim(),
+      name: ipPricingForm.name.trim(),
+      note: ipPricingForm.note?.trim(),
+    };
+    const exists = store.ipPricingRules.some((rule) => rule.id === nextRule.id);
+    commit({
+      ...store,
+      ipPricingRules: exists
+        ? store.ipPricingRules.map((rule) => rule.id === nextRule.id ? nextRule : rule)
+        : [nextRule, ...store.ipPricingRules],
+    }, "IP 定价规则已同步到前台");
+    setIpPricingForm(null);
+  };
+
   const renderDashboard = () => (
     <div className="space-y-6">
       <div className="grid gap-4 md:grid-cols-4">
@@ -667,6 +727,62 @@ export default function Admin() {
       </div>
     </section>
   );
+
+  const renderIpPricing = () => {
+    const targetText: Record<IpPricingRule["targetType"], string> = {
+      ip: "单个 IP",
+      cidr: "IP 段",
+      country: "国家/地区",
+      all: "全部访客",
+    };
+    const modeText: Record<IpPricingRule["priceMode"], string> = {
+      fixed: "固定价",
+      percent: "百分比",
+    };
+    return (
+      <section className="rounded-lg border border-orange-100 bg-white shadow-sm">
+        <div className="flex flex-col gap-3 border-b border-orange-100 p-5 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h2 className="text-lg font-black text-slate-950">IP 定价</h2>
+            <p className="text-sm text-slate-500">按客户 IP、IP 段或国家设置差异价格；优先级越高越先匹配。</p>
+          </div>
+          <button onClick={() => openIpPricingModal()} className="inline-flex items-center gap-2 rounded-lg bg-orange-600 px-3 py-2 text-sm font-bold text-white hover:bg-orange-700">
+            <Plus className="h-4 w-4" /> 新增规则
+          </button>
+        </div>
+        <div className="grid gap-4 p-5 xl:grid-cols-2">
+          {store.ipPricingRules.map((rule) => (
+            <div key={rule.id} className="rounded-lg border border-slate-100 p-4 hover:border-orange-200 hover:shadow-sm">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-base font-black text-slate-950">{rule.name}</p>
+                  <p className="mt-1 text-sm text-slate-500">{targetText[rule.targetType]}：{rule.targetType === "all" ? "全部" : rule.targetValue}</p>
+                </div>
+                <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${rule.enabled ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>
+                  {rule.enabled ? "已启用" : "已停用"}
+                </span>
+              </div>
+              <div className="mt-4 grid gap-3 text-sm md:grid-cols-4">
+                <div><p className="text-xs text-slate-400">商品</p><p className="font-black">{rule.productId === "all" ? "全部商品" : productTitle(store, rule.productId)}</p></div>
+                <div><p className="text-xs text-slate-400">定价方式</p><p className="font-black">{modeText[rule.priceMode]}</p></div>
+                <div><p className="text-xs text-slate-400">价格/比例</p><p className="font-black">{rule.priceMode === "fixed" ? `$${rule.priceValue.toFixed(2)}` : `${rule.priceValue}%`}</p></div>
+                <div><p className="text-xs text-slate-400">优先级</p><p className="font-black">{rule.priority}</p></div>
+              </div>
+              {rule.note && <p className="mt-3 rounded-lg bg-orange-50 p-3 text-xs text-orange-800">{rule.note}</p>}
+              <div className="mt-4 flex flex-wrap gap-3 text-sm font-bold text-orange-700">
+                <button onClick={() => openIpPricingModal(rule)}>编辑</button>
+                <button onClick={() => commit({ ...store, ipPricingRules: store.ipPricingRules.map((item) => item.id === rule.id ? { ...item, enabled: !item.enabled } : item) }, "IP 定价规则状态已同步到前台")}>{rule.enabled ? "停用" : "启用"}</button>
+                <button onClick={() => commit({ ...store, ipPricingRules: store.ipPricingRules.filter((item) => item.id !== rule.id) }, "IP 定价规则已删除")}>删除</button>
+              </div>
+            </div>
+          ))}
+          {store.ipPricingRules.length === 0 && (
+            <div className="rounded-lg border border-dashed border-orange-200 p-10 text-center text-sm text-slate-500 xl:col-span-2">还没有 IP 定价规则</div>
+          )}
+        </div>
+      </section>
+    );
+  };
 
   const renderInventory = () => (
     <section className="rounded-lg border border-orange-100 bg-white shadow-sm">
@@ -1106,6 +1222,21 @@ export default function Admin() {
     </div>
   )) : null;
 
+  const ipPricingModal = ipPricingForm ? modalFrame("IP 定价规则", "设置客户 IP、IP 段或国家命中后的商品价格。", () => setIpPricingForm(null), saveIpPricingForm, (
+    <div className="grid gap-4 md:grid-cols-2">
+      <label className="text-sm font-bold text-slate-700">规则名称<input value={ipPricingForm.name} onChange={(event) => setIpPricingForm({ ...ipPricingForm, name: event.target.value })} className={fieldClass} placeholder="例如 美国访客 ChatGPT 价格" /></label>
+      <label className="text-sm font-bold text-slate-700">匹配类型<select value={ipPricingForm.targetType} onChange={(event) => setIpPricingForm({ ...ipPricingForm, targetType: event.target.value as IpPricingRule["targetType"] })} className={fieldClass}><option value="ip">单个 IP</option><option value="cidr">IP 段 CIDR</option><option value="country">国家/地区代码</option><option value="all">全部访客</option></select></label>
+      <label className="text-sm font-bold text-slate-700">匹配值<input value={ipPricingForm.targetValue} onChange={(event) => setIpPricingForm({ ...ipPricingForm, targetValue: event.target.value })} className={fieldClass} placeholder="8.8.8.8 / 8.8.8.0/24 / US" /></label>
+      <label className="text-sm font-bold text-slate-700">适用商品<select value={ipPricingForm.productId} onChange={(event) => setIpPricingForm({ ...ipPricingForm, productId: event.target.value })} className={fieldClass}><option value="all">全部商品</option>{store.products.map((product) => <option key={product.id} value={product.id}>{product.titleKey}</option>)}</select></label>
+      <label className="text-sm font-bold text-slate-700">定价方式<select value={ipPricingForm.priceMode} onChange={(event) => setIpPricingForm({ ...ipPricingForm, priceMode: event.target.value as IpPricingRule["priceMode"] })} className={fieldClass}><option value="fixed">固定价 USD</option><option value="percent">按基础价增减百分比</option></select></label>
+      <label className="text-sm font-bold text-slate-700">{ipPricingForm.priceMode === "fixed" ? "新价格 USD" : "增减百分比"}<input type="number" step="0.01" value={ipPricingForm.priceValue} onChange={(event) => setIpPricingForm({ ...ipPricingForm, priceValue: event.target.value })} className={fieldClass} placeholder={ipPricingForm.priceMode === "fixed" ? "19.99" : "-10"} /></label>
+      <label className="text-sm font-bold text-slate-700">展示原价 USD<input type="number" step="0.01" value={ipPricingForm.originalPrice} onChange={(event) => setIpPricingForm({ ...ipPricingForm, originalPrice: event.target.value })} className={fieldClass} placeholder="可不填" /></label>
+      <label className="text-sm font-bold text-slate-700">优先级<input type="number" value={ipPricingForm.priority} onChange={(event) => setIpPricingForm({ ...ipPricingForm, priority: event.target.value })} className={fieldClass} placeholder="数字越大越优先" /></label>
+      <label className="md:col-span-2 flex items-center gap-3 rounded-lg border border-orange-100 p-4 text-sm font-bold text-slate-700"><input type="checkbox" checked={ipPricingForm.enabled} onChange={(event) => setIpPricingForm({ ...ipPricingForm, enabled: event.target.checked })} className="h-4 w-4 accent-orange-600" /> 启用该规则</label>
+      <label className="md:col-span-2 text-sm font-bold text-slate-700">内部备注<textarea value={ipPricingForm.note ?? ""} onChange={(event) => setIpPricingForm({ ...ipPricingForm, note: event.target.value })} className={`${fieldClass} h-24`} placeholder="记录规则目的、适用市场或客户说明" /></label>
+    </div>
+  )) : null;
+
   const productModal = productForm ? (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4">
       <div className="max-h-[92vh] w-full max-w-5xl overflow-hidden rounded-lg bg-white shadow-2xl">
@@ -1317,6 +1448,7 @@ export default function Admin() {
   const content = {
     dashboard: renderDashboard,
     products: renderProducts,
+    "ip-pricing": renderIpPricing,
     inventory: renderInventory,
     orders: renderOrders,
     tickets: renderTickets,
@@ -1380,6 +1512,7 @@ export default function Admin() {
       {levelModal}
       {actionModal}
       {operatorModal}
+      {ipPricingModal}
     </div>
   );
 }
