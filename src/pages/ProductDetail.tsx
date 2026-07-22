@@ -37,6 +37,8 @@ export default function ProductDetail() {
   const initial = state.initial || title.charAt(0);
   const ipPricingRuleName = syncedProduct?.ipPricingRuleName;
   const ipPricingNote = syncedProduct?.ipPricingNote;
+  const ipPricingDisclosure = syncedProduct?.ipPricingDisclosure;
+  const ipPricingRiskLevel = syncedProduct?.ipPricingRiskLevel;
 
   const [months, setMonths] = useState(3);
   const [couponOpen, setCouponOpen] = useState(false);
@@ -218,6 +220,8 @@ export default function ProductDetail() {
                 <div className="mb-4 rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm font-semibold text-orange-700">
                   IP 定价已生效：{ipPricingRuleName}
                   {ipPricingNote ? <span className="block text-xs font-normal text-orange-600">{ipPricingNote}</span> : null}
+                  {ipPricingDisclosure ? <span className="block text-xs font-normal text-orange-600">{ipPricingDisclosure}</span> : null}
+                  {ipPricingRiskLevel === "watch" ? <span className="mt-1 block text-xs text-rose-600">该地区订单可能需要人工复核</span> : null}
                 </div>
               )}
 

@@ -83,6 +83,8 @@ export default function FeaturedProducts({ selectedCategory, onSelectCategory, s
                 subtitle={product.subtitle}
                 ipPricingRuleName={product.ipPricingRuleName}
                 ipPricingNote={product.ipPricingNote}
+                ipPricingDisclosure={product.ipPricingDisclosure}
+                ipPricingRiskLevel={product.ipPricingRiskLevel}
                 features={product.delivery ? [product.delivery, t("products.autoDeliver"), t("products.stableAccount")] : undefined}
               />
             ))}

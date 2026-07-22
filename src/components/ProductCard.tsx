@@ -15,9 +15,11 @@ interface ProductProps {
   subtitle?: string;
   ipPricingRuleName?: string;
   ipPricingNote?: string;
+  ipPricingDisclosure?: string;
+  ipPricingRiskLevel?: "normal" | "watch" | "block";
 }
 
-export default function ProductCard({ title, price, originalPrice, color, badge, features, imageUrl, subtitle, ipPricingRuleName, ipPricingNote }: ProductProps) {
+export default function ProductCard({ title, price, originalPrice, color, badge, features, imageUrl, subtitle, ipPricingRuleName, ipPricingNote, ipPricingDisclosure, ipPricingRiskLevel }: ProductProps) {
   const { t } = useTranslation();
   const { formatPrice } = useLocale();
   const discount = Math.round(((originalPrice - price) / originalPrice) * 100);
@@ -71,6 +73,8 @@ export default function ProductCard({ title, price, originalPrice, color, badge,
           <div className="mb-4 rounded-xl border border-orange-200 bg-orange-50 px-3 py-2 text-xs font-semibold text-orange-700">
             IP 定价已生效：{ipPricingRuleName}
             {ipPricingNote ? <span className="block font-normal text-orange-600">{ipPricingNote}</span> : null}
+            {ipPricingDisclosure ? <span className="block font-normal text-orange-600">{ipPricingDisclosure}</span> : null}
+            {ipPricingRiskLevel === "watch" ? <span className="mt-1 block text-rose-600">该地区订单可能需要人工复核</span> : null}
           </div>
         )}
 

@@ -8,8 +8,11 @@ export type { ProductBadge };
 export type OrderStatus = "pending" | "delivered" | "refund";
 export type TicketStatus = "open" | "closed";
 export type SupplierStatus = "pending" | "approved" | "rejected";
-export type IpPriceTargetType = "ip" | "cidr" | "country" | "all";
+export type IpPriceTargetType = "ip" | "cidr" | "country" | "region" | "all";
 export type IpPriceMode = "fixed" | "percent";
+export type IpPriceStrategy = "manual" | "localized" | "ppp" | "campaign" | "risk";
+export type IpPriceRounding = "none" | "ending-99" | "ending-90" | "whole";
+export type IpPriceRiskLevel = "normal" | "watch" | "block";
 
 export interface AdminProduct extends Product {
   id: string;
@@ -85,9 +88,18 @@ export interface IpPricingRule {
   targetType: IpPriceTargetType;
   targetValue: string;
   productId: string;
+  strategy: IpPriceStrategy;
   priceMode: IpPriceMode;
   priceValue: number;
   originalPrice?: number;
+  minPrice?: number;
+  maxPrice?: number;
+  rounding?: IpPriceRounding;
+  currencyHint?: string;
+  startsAt?: string;
+  endsAt?: string;
+  disclosure?: string;
+  riskLevel?: IpPriceRiskLevel;
   note?: string;
 }
 
@@ -198,23 +210,53 @@ export function createSeedStore(): AdminStore {
         targetType: "country",
         targetValue: "US",
         productId: "chatgpt-plus",
+        strategy: "localized",
         priceMode: "fixed",
         priceValue: 18.99,
         originalPrice: 29.99,
-        note: "示例：美国 IP 访问时 ChatGPT Plus 显示独立价格。",
+        minPrice: 14.99,
+        maxPrice: 24.99,
+        rounding: "ending-99",
+        currencyHint: "USD",
+        disclosure: "价格根据您所在地区自动匹配。",
+        riskLevel: "normal",
+        note: "示例：美国 IP 访问时 ChatGPT Plus 显示独立本地价格。",
       },
       {
         id: "IPR-1002",
-        name: "指定 IP 测试价",
-        enabled: false,
-        priority: 50,
-        targetType: "ip",
-        targetValue: "8.8.8.8",
+        name: "东南亚市场 PPP 折扣",
+        enabled: true,
+        priority: 15,
+        targetType: "region",
+        targetValue: "SEA",
         productId: "netflix",
-        priceMode: "fixed",
-        priceValue: 19.99,
-        originalPrice: 49.99,
-        note: "把 targetValue 改成客户真实 IP 后启用。",
+        strategy: "ppp",
+        priceMode: "percent",
+        priceValue: -18,
+        originalPrice: 39.99,
+        minPrice: 16.99,
+        rounding: "ending-99",
+        currencyHint: "local",
+        disclosure: "已应用地区优惠价。",
+        riskLevel: "normal",
+        note: "面向 SEA 国家组的购买力折扣示例。",
+      },
+      {
+        id: "IPR-1003",
+        name: "指定 IP 段风险复核",
+        enabled: false,
+        priority: 80,
+        targetType: "cidr",
+        targetValue: "185.220.101.0/24",
+        productId: "all",
+        strategy: "risk",
+        priceMode: "percent",
+        priceValue: 0,
+        rounding: "none",
+        currencyHint: "base",
+        disclosure: "订单可能需要人工复核。",
+        riskLevel: "watch",
+        note: "可用于代理、异常退款或高风险来源 IP 段。",
       },
     ],
     analyticsEvents: [
@@ -303,16 +345,25 @@ export function buildPublicStore(store: AdminStore) {
     categories,
     ipPricingRules: store.ipPricingRules
       .filter((rule) => rule.enabled)
-      .map(({ id, name, priority, targetType, targetValue, productId, priceMode, priceValue, originalPrice, note }) => ({
+      .map(({ id, name, priority, targetType, targetValue, productId, strategy, priceMode, priceValue, originalPrice, minPrice, maxPrice, rounding, currencyHint, startsAt, endsAt, disclosure, riskLevel, note }) => ({
         id,
         name,
         priority,
         targetType,
         targetValue,
         productId,
+        strategy,
         priceMode,
         priceValue,
         originalPrice,
+        minPrice,
+        maxPrice,
+        rounding,
+        currencyHint,
+        startsAt,
+        endsAt,
+        disclosure,
+        riskLevel,
         note,
       })),
     settings: store.settings,
@@ -349,9 +400,18 @@ function normalizeStore(candidate: AdminStore): AdminStore {
       targetType: rule.targetType || "ip",
       targetValue: rule.targetValue || "",
       productId: rule.productId || "all",
+      strategy: rule.strategy || "manual",
       priceMode: rule.priceMode || "fixed",
       priceValue: Number(rule.priceValue) || 0,
       originalPrice: rule.originalPrice ? Number(rule.originalPrice) : undefined,
+      minPrice: rule.minPrice ? Number(rule.minPrice) : undefined,
+      maxPrice: rule.maxPrice ? Number(rule.maxPrice) : undefined,
+      rounding: rule.rounding || "ending-99",
+      currencyHint: rule.currencyHint || "base",
+      startsAt: rule.startsAt || "",
+      endsAt: rule.endsAt || "",
+      disclosure: rule.disclosure || "",
+      riskLevel: rule.riskLevel || "normal",
     })),
     analyticsEvents: (candidate.analyticsEvents ?? []).map((event) => ({
       ...event,
