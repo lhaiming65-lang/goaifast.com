@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { loadPublicProducts } from "@/lib/adminStore";
 import { applyIpPricing, getVisitorIpInfo } from "@/lib/ipPricing";
+import { loadRemotePublicStore } from "@/lib/remoteAdminStore";
 
 export function useSyncedProducts() {
   const [visitor, setVisitor] = useState<Awaited<ReturnType<typeof getVisitorIpInfo>>>(null);
@@ -20,9 +21,17 @@ export function useSyncedProducts() {
 
   useEffect(() => {
     const refresh = () => setProducts(applyIpPricing(loadPublicProducts(), visitor));
+    const refreshRemote = () => {
+      loadRemotePublicStore().then((result) => {
+        if (result.ok) refresh();
+      });
+    };
+    refreshRemote();
+    const timer = window.setInterval(refreshRemote, 15000);
     window.addEventListener("storage", refresh);
     window.addEventListener("goaifast-store-updated", refresh);
     return () => {
+      window.clearInterval(timer);
       window.removeEventListener("storage", refresh);
       window.removeEventListener("goaifast-store-updated", refresh);
     };

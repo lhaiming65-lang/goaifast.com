@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   Activity,
   BarChart3,
@@ -41,6 +41,7 @@ import {
   type Supplier,
   type Ticket,
 } from "@/lib/adminStore";
+import { loadRemoteAdminStore, saveRemoteAdminStore } from "@/lib/remoteAdminStore";
 
 const menu = [
   { id: "dashboard", label: "数据看板", icon: LayoutDashboard },
@@ -246,9 +247,29 @@ export default function Admin() {
   const [actionForm, setActionForm] = useState<ActionFormState | null>(null);
 
   const commit = (next: AdminStore, message: string) => {
-    setStore(saveAdminStore(next));
-    setNotice(message);
+    const saved = saveAdminStore(next);
+    setStore(saved);
+    setNotice(`${message}，正在同步数据库...`);
+    saveRemoteAdminStore(saved).then((result) => {
+      setNotice(result.ok ? `${message}，数据库已同步，前台会自动更新` : `${message}，本地已保存，数据库未同步：${result.error}`);
+    });
   };
+
+  useEffect(() => {
+    let alive = true;
+    loadRemoteAdminStore().then((result) => {
+      if (!alive) return;
+      if (result.ok && result.store) {
+        setStore(result.store);
+        setNotice("已从 Supabase 数据库加载后台数据");
+      } else {
+        setNotice(`当前使用本地数据；数据库同步待完成：${result.error}`);
+      }
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const metrics = useMemo(() => {
     const revenue = store.orders.reduce((sum, order) => order.status !== "refund" ? sum + order.amount : sum, 0);
