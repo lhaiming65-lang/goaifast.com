@@ -19,9 +19,9 @@ export default defineConfig(({ mode }) => ({
   build: {
     rollupOptions: {
       output: {
-        entryFileNames: "assets/app.js",
-        chunkFileNames: "assets/[name].js",
-        assetFileNames: "assets/[name][extname]",
+        entryFileNames: "assets/[name]-[hash].js",
+        chunkFileNames: "assets/[name]-[hash].js",
+        assetFileNames: "assets/[name]-[hash][extname]",
         manualChunks: {
           react: ["react", "react-dom", "react-router-dom"],
           supabase: ["@supabase/supabase-js"],
