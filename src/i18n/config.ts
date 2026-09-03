@@ -1355,6 +1355,12 @@ const resources = {
   it: { translation: { ...it, ...extras.it } },
 };
 
+const defaultLocaleVersion = "zh-default-20260903";
+if (typeof localStorage !== "undefined" && localStorage.getItem("locale_default_version") !== defaultLocaleVersion) {
+  localStorage.setItem("app_lang", "zh");
+  localStorage.setItem("locale_default_version", defaultLocaleVersion);
+}
+
 i18n
   .use(LanguageDetector)
   .use(initReactI18next)
