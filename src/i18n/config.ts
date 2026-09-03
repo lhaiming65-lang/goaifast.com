@@ -1360,11 +1360,12 @@ i18n
   .use(initReactI18next)
   .init({
     resources,
-    fallbackLng: "en",
+    lng: localStorage.getItem("app_lang") || "zh",
+    fallbackLng: "zh",
     supportedLngs: ["zh", "en", "ja", "ko", "es", "fr", "de", "pt", "ru", "ar", "it"],
     interpolation: { escapeValue: false },
     detection: {
-      order: ["localStorage", "navigator"],
+      order: ["localStorage"],
       caches: ["localStorage"],
       lookupLocalStorage: "app_lang",
     },
