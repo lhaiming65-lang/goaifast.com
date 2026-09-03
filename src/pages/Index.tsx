@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Navigate, useSearchParams } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import Hero from "@/components/Hero";
 import CategorySection from "@/components/CategorySection";
@@ -12,6 +12,7 @@ const Index = () => {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [searchParams] = useSearchParams();
   const query = searchParams.get("q") ?? "";
+  const wantsAdmin = searchParams.get("admin") === "1";
 
   useEffect(() => {
     if (query) {
@@ -20,6 +21,8 @@ const Index = () => {
       if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   }, [query]);
+
+  if (wantsAdmin) return <Navigate to="/admin/products" replace />;
 
   return (
     <div className="min-h-screen bg-background">

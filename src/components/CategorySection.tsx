@@ -27,11 +27,11 @@ export default function CategorySection({ onSelectCategory }: Props) {
   };
 
   return (
-    <section className="py-16 px-4">
+<section className="py-8 px-4">
       <div className="container mx-auto max-w-6xl">
-        <div className="text-center space-y-4 mb-12">
+        <div className="text-center space-y-4 mb-6">
           <h2 className="text-3xl md:text-4xl font-bold">{t("category.title")}</h2>
-          <p className="text-muted-foreground">{t("category.subtitle")}</p>
+          <p className="text-muted-foreground text-base md:text-lg">{t("category.subtitle")}</p>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
@@ -45,7 +45,7 @@ export default function CategorySection({ onSelectCategory }: Props) {
               <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${category.color} flex items-center justify-center group-hover:scale-110 transition-transform`}>
                 <category.icon className="w-6 h-6 text-white" />
               </div>
-              <span className="font-medium">{t(`category.${category.id}`)}</span>
+              <span className="font-medium text-base">{t(`category.${category.id}`)}</span>
             </Button>
           ))}
         </div>

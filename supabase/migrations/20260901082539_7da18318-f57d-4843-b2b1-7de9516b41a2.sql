@@ -1,0 +1,1 @@
+ALTER TABLE public.product_details ADD COLUMN IF NOT EXISTS subscription_types jsonb NOT NULL DEFAULT '[]'::jsonb;

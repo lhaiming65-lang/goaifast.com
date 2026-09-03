@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
-import { appBaseUrl } from "@/lib/appUrl";
+import { lovable } from "@/integrations/lovable";
 import { Button } from "./ui/button";
 import { Loader2 } from "lucide-react";
 
@@ -48,17 +47,15 @@ export default function SocialAuthButtons({ redirectTo }: Props) {
     }
     setLoading(provider);
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider,
-        options: {
-          redirectTo: redirectTo || appBaseUrl(),
-        },
+      const result = await lovable.auth.signInWithOAuth(provider, {
+        redirect_uri: redirectTo || window.location.origin,
       });
-      if (error) {
-        toast.error(error.message || "Sign-in failed");
+      if (result.error) {
+        toast.error(result.error.message || "Sign-in failed");
         setLoading(null);
         return;
       }
+      if (result.redirected) return; // browser will navigate away
       // Session set — parent listener will react
       setLoading(null);
     } catch (e) {

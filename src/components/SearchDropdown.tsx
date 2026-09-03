@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Search, X, Clock } from "lucide-react";
 import { categories } from "@/data/products";
-import { useSyncedProducts } from "@/hooks/useSyncedProducts";
+import { useLiveProducts } from "@/hooks/useProductContent";
 
 interface SearchDropdownProps {
   query: string;
@@ -16,7 +16,6 @@ const STORAGE_KEY = "recent_searches";
 
 export default function SearchDropdown({ query, onQueryChange, onSearch, onClose }: SearchDropdownProps) {
   const { t, i18n } = useTranslation();
-  const products = useSyncedProducts();
   const ref = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
@@ -87,6 +86,7 @@ export default function SearchDropdown({ query, onQueryChange, onSearch, onClose
     onClose();
   };
 
+  const products = useLiveProducts();
   const filteredProducts = products.filter((p) => {
     const matchCategory = activeCategory === "all" || p.category === activeCategory;
     const matchQuery = !query.trim() || p.titleKey.toLowerCase().includes(query.trim().toLowerCase());
@@ -194,13 +194,9 @@ export default function SearchDropdown({ query, onQueryChange, onSearch, onClose
                   <span className="w-6 text-center text-sm font-bold text-gray-400 group-hover:text-primary transition-colors">
                     {index + 1}
                   </span>
-                  {product.imageUrl ? (
-                    <img src={product.imageUrl} alt={product.titleKey} className="w-10 h-10 rounded-lg object-cover shadow-sm border border-gray-100" />
-                  ) : (
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold text-sm shadow-sm ${product.color}`}>
-                      {product.titleKey.charAt(0)}
-                    </div>
-                  )}
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold text-sm shadow-sm ${product.color}`}>
+                    {product.titleKey.charAt(0)}
+                  </div>
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-semibold text-gray-900 dark:text-white truncate">
                       {product.titleKey}

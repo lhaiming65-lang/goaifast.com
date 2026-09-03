@@ -20,7 +20,7 @@ export default function Hero() {
   ];
 
   return (
-    <section className="relative py-20 px-4 overflow-hidden">
+    <section className="relative pt-8 md:pt-10 pb-4 md:pb-6 px-4 overflow-hidden">
       <div className="absolute inset-0 bg-gradient-hero -z-10" />
 
       <div className="container mx-auto max-w-6xl">
@@ -63,7 +63,7 @@ export default function Hero() {
             </Button>
           </div>
 
-          <div className="flex flex-wrap items-center justify-center gap-8 pt-8 text-sm text-muted-foreground">
+<div className="flex flex-wrap items-center justify-center gap-8 md:gap-10 pt-6 text-lg text-muted-foreground">
             <div className="flex items-center gap-2">
               <Shield className="w-5 h-5 text-primary" />
               <span>{t("hero.securePay")}</span>

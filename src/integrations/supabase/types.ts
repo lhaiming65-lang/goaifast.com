@@ -14,6 +14,57 @@ export type Database = {
   }
   public: {
     Tables: {
+      affiliate_applications: {
+        Row: {
+          audience_size: string | null
+          channel_type: string
+          channel_url: string | null
+          contact: string | null
+          country: string | null
+          created_at: string
+          email: string
+          id: string
+          name: string
+          note: string | null
+          payout_method: string | null
+          promotion_plan: string | null
+          status: string
+          user_id: string | null
+        }
+        Insert: {
+          audience_size?: string | null
+          channel_type: string
+          channel_url?: string | null
+          contact?: string | null
+          country?: string | null
+          created_at?: string
+          email: string
+          id?: string
+          name: string
+          note?: string | null
+          payout_method?: string | null
+          promotion_plan?: string | null
+          status?: string
+          user_id?: string | null
+        }
+        Update: {
+          audience_size?: string | null
+          channel_type?: string
+          channel_url?: string | null
+          contact?: string | null
+          country?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          name?: string
+          note?: string | null
+          payout_method?: string | null
+          promotion_plan?: string | null
+          status?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       orders: {
         Row: {
           created_at: string
@@ -74,6 +125,93 @@ export type Database = {
         }
         Relationships: []
       }
+      product_details: {
+        Row: {
+          big_headline: string
+          big_sub: string
+          cons: Json
+          created_at: string
+          description: string
+          feature_grid: Json
+          features: Json
+          highlights: Json
+          how_it_works: Json
+          how_it_works_title: string
+          id: string
+          intro_badge: string
+          intro_body: string
+          month_options: Json
+          monthly_price: number
+          original_price: number
+          overall_score: number
+          pros: Json
+          reviews: Json
+          scores: Json
+          slug: string
+          subscription_types: Json
+          title: string
+          updated_at: string
+          usage_guide: Json
+          usage_title: string
+        }
+        Insert: {
+          big_headline?: string
+          big_sub?: string
+          cons?: Json
+          created_at?: string
+          description?: string
+          feature_grid?: Json
+          features?: Json
+          highlights?: Json
+          how_it_works?: Json
+          how_it_works_title?: string
+          id?: string
+          intro_badge?: string
+          intro_body?: string
+          month_options?: Json
+          monthly_price?: number
+          original_price?: number
+          overall_score?: number
+          pros?: Json
+          reviews?: Json
+          scores?: Json
+          slug: string
+          subscription_types?: Json
+          title: string
+          updated_at?: string
+          usage_guide?: Json
+          usage_title?: string
+        }
+        Update: {
+          big_headline?: string
+          big_sub?: string
+          cons?: Json
+          created_at?: string
+          description?: string
+          feature_grid?: Json
+          features?: Json
+          highlights?: Json
+          how_it_works?: Json
+          how_it_works_title?: string
+          id?: string
+          intro_badge?: string
+          intro_body?: string
+          month_options?: Json
+          monthly_price?: number
+          original_price?: number
+          overall_score?: number
+          pros?: Json
+          reviews?: Json
+          scores?: Json
+          slug?: string
+          subscription_types?: Json
+          title?: string
+          updated_at?: string
+          usage_guide?: Json
+          usage_title?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -101,15 +239,129 @@ export type Database = {
         }
         Relationships: []
       }
+      store_products: {
+        Row: {
+          badge: string
+          category: string
+          color: string
+          cost: number
+          created_at: string
+          delivery_method: string
+          delivery_rules: string
+          detail_description: string
+          id: string
+          image_url: string
+          original_price: number
+          price: number
+          slug: string
+          status: string
+          stock: number
+          subtitle: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          badge?: string
+          category?: string
+          color?: string
+          cost?: number
+          created_at?: string
+          delivery_method?: string
+          delivery_rules?: string
+          detail_description?: string
+          id?: string
+          image_url?: string
+          original_price?: number
+          price?: number
+          slug: string
+          status?: string
+          stock?: number
+          subtitle?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          badge?: string
+          category?: string
+          color?: string
+          cost?: number
+          created_at?: string
+          delivery_method?: string
+          delivery_rules?: string
+          detail_description?: string
+          id?: string
+          image_url?: string
+          original_price?: number
+          price?: number
+          slug?: string
+          status?: string
+          stock?: number
+          subtitle?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      subscription_type_templates: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          types: Json
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          types?: Json
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          types?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -236,6 +488,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "user"],
+    },
   },
 } as const

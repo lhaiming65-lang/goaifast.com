@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import ProductCard from "./ProductCard";
 import { Tv, Music, Gamepad2, Sparkles, Store, Wallet, Monitor, Grid3x3 } from "lucide-react";
-import { useSyncedProducts } from "@/hooks/useSyncedProducts";
+import { useLiveProducts } from "@/hooks/useProductContent";
 
 const categories = [
   { id: "all", icon: Grid3x3 },
@@ -22,7 +22,7 @@ interface Props {
 
 export default function FeaturedProducts({ selectedCategory, onSelectCategory, searchQuery = "" }: Props) {
   const { t } = useTranslation();
-  const products = useSyncedProducts();
+  const products = useLiveProducts();
   const q = searchQuery.trim().toLowerCase();
   const filteredProducts = products.filter((p) => {
     const matchCategory = selectedCategory === "all" || p.category === selectedCategory;
@@ -37,11 +37,11 @@ export default function FeaturedProducts({ selectedCategory, onSelectCategory, s
   };
 
   return (
-    <section id="products" className="py-16 px-4 bg-secondary/30">
+<section id="products" className="py-8 px-4 bg-secondary/30">
       <div className="container mx-auto max-w-7xl">
-        <div className="text-center space-y-4 mb-10">
+        <div className="text-center space-y-4 mb-6">
           <h2 className="text-3xl md:text-4xl font-bold">{t("products.sectionTitle")}</h2>
-          <p className="text-muted-foreground">{t("products.sectionSubtitle")}</p>
+          <p className="text-muted-foreground text-base md:text-lg">{t("products.sectionSubtitle")}</p>
         </div>
 
         <div className="flex flex-wrap justify-center gap-3 mb-12">
@@ -78,14 +78,9 @@ export default function FeaturedProducts({ selectedCategory, onSelectCategory, s
                 price={product.price}
                 originalPrice={product.originalPrice}
                 color={product.color}
-                badge={product.badge ? badgeMap[product.badge] : undefined}
+                badge={product.badge ? badgeMap[product.badge] ?? product.badge : undefined}
                 imageUrl={product.imageUrl}
                 subtitle={product.subtitle}
-                ipPricingRuleName={product.ipPricingRuleName}
-                ipPricingNote={product.ipPricingNote}
-                ipPricingDisclosure={product.ipPricingDisclosure}
-                ipPricingRiskLevel={product.ipPricingRiskLevel}
-                features={product.delivery ? [product.delivery, t("products.autoDeliver"), t("products.stableAccount")] : undefined}
               />
             ))}
           </div>

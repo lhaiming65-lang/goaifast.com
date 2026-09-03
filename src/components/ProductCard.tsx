@@ -13,13 +13,9 @@ interface ProductProps {
   features?: string[];
   imageUrl?: string;
   subtitle?: string;
-  ipPricingRuleName?: string;
-  ipPricingNote?: string;
-  ipPricingDisclosure?: string;
-  ipPricingRiskLevel?: "normal" | "watch" | "block";
 }
 
-export default function ProductCard({ title, price, originalPrice, color, badge, features, imageUrl, subtitle, ipPricingRuleName, ipPricingNote, ipPricingDisclosure, ipPricingRiskLevel }: ProductProps) {
+export default function ProductCard({ title, price, originalPrice, color, badge, features, imageUrl, subtitle }: ProductProps) {
   const { t } = useTranslation();
   const { formatPrice } = useLocale();
   const discount = Math.round(((originalPrice - price) / originalPrice) * 100);
@@ -47,7 +43,7 @@ export default function ProductCard({ title, price, originalPrice, color, badge,
       <div className="p-5 flex-1">
         <div className="flex items-start justify-between mb-4">
           {imageUrl ? (
-            <img src={imageUrl} alt={title} className="w-14 h-14 rounded-xl object-cover shadow-lg border border-gray-100" />
+            <img src={imageUrl} alt={title} className="w-14 h-14 rounded-xl object-cover shadow-lg" loading="lazy" />
           ) : (
             <div className={`w-14 h-14 rounded-xl flex items-center justify-center text-white text-2xl font-bold shadow-lg ${color}`}>
               {title.charAt(0)}
@@ -69,14 +65,6 @@ export default function ProductCard({ title, price, originalPrice, color, badge,
           <span className="text-sm text-gray-500 font-medium">{t("products.perMonth")}</span>
           <span className="text-xs text-gray-400 line-through ms-auto" dir="ltr">{t("products.original")} {formatPrice(originalPrice)}</span>
         </div>
-        {ipPricingRuleName && (
-          <div className="mb-4 rounded-xl border border-orange-200 bg-orange-50 px-3 py-2 text-xs font-semibold text-orange-700">
-            IP 定价已生效：{ipPricingRuleName}
-            {ipPricingNote ? <span className="block font-normal text-orange-600">{ipPricingNote}</span> : null}
-            {ipPricingDisclosure ? <span className="block font-normal text-orange-600">{ipPricingDisclosure}</span> : null}
-            {ipPricingRiskLevel === "watch" ? <span className="mt-1 block text-rose-600">该地区订单可能需要人工复核</span> : null}
-          </div>
-        )}
 
         <div className="space-y-2 mb-4 rounded-xl bg-blue-50/60 dark:bg-blue-950/20 p-3">
           {visible.map((f, i) => (
@@ -101,14 +89,14 @@ export default function ProductCard({ title, price, originalPrice, color, badge,
       <div className="p-4 pt-2 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-100 dark:border-gray-700">
         <Link
           to={`/product/${encodeURIComponent(title)}`}
-          state={{ title, price, originalPrice, color, initial: title.charAt(0), imageUrl }}
+          state={{ title, price, originalPrice, color, initial: title.charAt(0) }}
           className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold py-3 rounded-xl shadow-md active:scale-95 transition-all flex items-center justify-center gap-2"
         >
           {t("products.buyNow")} <span className="text-xs bg-white/20 px-1.5 py-0.5 rounded">{t("products.save")} {discount}%</span>
         </Link>
         <Link
           to={`/product/${encodeURIComponent(title)}`}
-          state={{ title, price, originalPrice, color, initial: title.charAt(0), imageUrl }}
+          state={{ title, price, originalPrice, color, initial: title.charAt(0) }}
           className="mt-2 block text-center text-xs font-semibold text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 underline underline-offset-4 decoration-gray-300 hover:decoration-blue-500"
         >
           {t("products.viewMore", "View more details")}

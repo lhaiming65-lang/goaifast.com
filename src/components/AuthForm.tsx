@@ -3,7 +3,6 @@ import { useTranslation } from "react-i18next";
 import { z } from "zod";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { appBaseUrl, appUrl } from "@/lib/appUrl";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -43,7 +42,7 @@ export default function AuthForm({ initialMode = "signin", onSuccess, compact = 
     try {
       if (mode === "forgot") {
         const { error } = await supabase.auth.resetPasswordForEmail(emailParsed.data, {
-          redirectTo: appUrl("/reset-password"),
+          redirectTo: `${window.location.origin}/reset-password`,
         });
         if (error) throw error;
         toast.success(t("auth.resetLinkSent"));
@@ -79,7 +78,7 @@ export default function AuthForm({ initialMode = "signin", onSuccess, compact = 
           email: emailParsed.data,
           password: pwdParsed.data,
           options: {
-            emailRedirectTo: appBaseUrl(),
+            emailRedirectTo: `${window.location.origin}/`,
             data: { full_name: fullName.trim() || null },
           },
         });

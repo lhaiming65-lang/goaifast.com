@@ -92,14 +92,12 @@ export default function Footer() {
           <ul className="space-y-4 text-[15px]">
             {about.map((l) => (
               <li key={l.label}>
-                <a
-                  href={l.to}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <Link
+                  to={l.to}
                   className="text-gray-300/90 hover:text-white transition-colors"
                 >
                   {l.label}
-                </a>
+                </Link>
               </li>
             ))}
           </ul>
@@ -113,14 +111,12 @@ export default function Footer() {
           <ul className="space-y-4 text-[15px]">
             {legal.map((l) => (
               <li key={l.label}>
-                <a
-                  href={l.to}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <Link
+                  to={l.to}
                   className="text-gray-300/90 hover:text-white transition-colors"
                 >
                   {l.label}
-                </a>
+                </Link>
               </li>
             ))}
           </ul>

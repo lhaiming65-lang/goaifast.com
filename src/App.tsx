@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -15,18 +16,34 @@ import Profile from "./pages/Profile";
 import Orders from "./pages/Orders";
 import NotFound from "./pages/NotFound";
 import StaticPage from "./pages/StaticPage";
+import Affiliate from "./pages/Affiliate";
+import AffiliateApply from "./pages/AffiliateApply";
 import OAuthConsent from "./pages/OAuthConsent";
 import ProtectedRoute from "./components/ProtectedRoute";
-import Admin from "./pages/Admin";
+import AdminRoute from "./components/AdminRoute";
+import AdminProductDetails from "./pages/AdminProductDetails";
+import AdminProducts from "./pages/AdminProducts";
+
 
 const queryClient = new QueryClient();
-const routerBaseName = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+const ScrollToTop = () => {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" as ScrollBehavior });
+  }, [pathname]);
+  return null;
+};
 
 const HomeEntry = () => {
-  const location = useLocation();
-  const params = new URLSearchParams(location.search);
-
-  return params.get("admin") === "1" ? <Admin /> : <Index />;
+  const { search } = useLocation();
+  return new URLSearchParams(search).get("admin") === "1" ? (
+    <AdminRoute>
+      <AdminProductDetails />
+    </AdminRoute>
+  ) : (
+    <Index />
+  );
 };
 
 const App = () => (
@@ -34,11 +51,10 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <BrowserRouter basename={routerBaseName}>
+<BrowserRouter>
+        <ScrollToTop />
         <AuthProvider>
           <Routes>
-            <Route index element={<HomeEntry />} />
-            <Route path="" element={<HomeEntry />} />
             <Route path="/" element={<HomeEntry />} />
             <Route path="/product/:slug" element={<ProductDetail />} />
             <Route path="/auth" element={<Auth />} />
@@ -85,10 +101,43 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            <Route path="/page/affiliate" element={<Affiliate />} />
+            <Route path="/affiliate/apply" element={<AffiliateApply />} />
             <Route path="/page/:slug" element={<StaticPage />} />
+            <Route
+              path="/admin"
+              element={
+                <AdminRoute>
+                  <AdminProductDetails />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/admin.html"
+              element={
+                <AdminRoute>
+                  <AdminProductDetails />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/admin/products"
+              element={
+                <AdminRoute>
+                  <AdminProductDetails />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/admin/skus"
+              element={
+                <AdminRoute>
+                  <AdminProducts />
+                </AdminRoute>
+              }
+            />
+
             <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
-            <Route path="/admin" element={<Admin />} />
-            <Route path="/admin.html" element={<Admin />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
