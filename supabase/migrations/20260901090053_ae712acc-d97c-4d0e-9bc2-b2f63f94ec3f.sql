@@ -28,7 +28,11 @@ ALTER TABLE public.store_products ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Anyone can view active store products" ON public.store_products
   FOR SELECT TO anon, authenticated
-  USING (status = 'active' OR has_role(auth.uid(), 'admin'));
+  USING (status = 'active');
+
+CREATE POLICY "Admins can view all store products" ON public.store_products
+  FOR SELECT TO authenticated
+  USING (has_role(auth.uid(), 'admin'));
 
 CREATE POLICY "Admins can insert store products" ON public.store_products
   FOR INSERT TO authenticated
