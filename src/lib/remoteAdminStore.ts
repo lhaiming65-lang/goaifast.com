@@ -75,6 +75,58 @@ const productToRow = (product: AdminProduct, index: number) => ({
   updated_at: new Date().toISOString(),
 });
 
+const productToStoreProductRow = (product: AdminProduct) => ({
+  slug: product.titleKey,
+  title: product.titleKey,
+  category: product.category,
+  price: product.price,
+  original_price: product.originalPrice,
+  cost: product.cost,
+  stock: product.stock ?? 0,
+  badge: product.badge ?? "",
+  status: product.status === "enabled" ? "active" : "inactive",
+  delivery_method: product.deliveryMode,
+  subtitle: product.subtitle ?? "",
+  delivery_rules: product.delivery ?? "",
+  detail_description: product.description ?? "",
+  color: product.color,
+  image_url: product.imageUrl ?? "",
+  updated_at: new Date().toISOString(),
+});
+
+async function syncStorefrontProductDetails(products: AdminProduct[]) {
+  const editableProducts = products.filter((product) => product.status === "enabled");
+  if (!editableProducts.length) return;
+
+  const slugs = editableProducts.map((product) => product.titleKey);
+  const { data, error } = await db.from("product_details").select("*").in("slug", slugs);
+  if (error) throw error;
+
+  const existingBySlug = new Map((data ?? []).map((row: any) => [row.slug, row]));
+  const rows = editableProducts.map((product) => {
+    const existing = existingBySlug.get(product.titleKey) ?? {};
+    const deliverySteps = String(product.delivery ?? "")
+      .split(/\r?\n|；|;/)
+      .map((line) => line.trim())
+      .filter(Boolean);
+    return {
+      ...existing,
+      slug: product.titleKey,
+      title: product.titleKey,
+      monthly_price: product.price,
+      original_price: product.originalPrice,
+      description: product.description || existing.description || "",
+      intro_badge: existing.intro_badge || product.subtitle || product.titleKey,
+      intro_body: product.description || existing.intro_body || "",
+      how_it_works_title: existing.how_it_works_title || "交付与售后规则",
+      how_it_works: deliverySteps.length ? deliverySteps : (existing.how_it_works ?? []),
+    };
+  });
+
+  const { error: upsertError } = await db.from("product_details").upsert(rows, { onConflict: "slug" });
+  if (upsertError) throw upsertError;
+}
+
 const inventoryFromRow = (row: any): InventoryAccount => ({
   id: row.id,
   productId: row.product_id,
@@ -399,6 +451,11 @@ export async function loadRemoteAdminStore(): Promise<RemoteSyncResult> {
 export async function saveRemoteAdminStore(store: AdminStore): Promise<RemoteSyncResult> {
   try {
     await replaceTable("go_products", store.products.map(productToRow));
+    const { error: storeProductsError } = await db
+      .from("store_products")
+      .upsert(store.products.map(productToStoreProductRow), { onConflict: "slug" });
+    if (storeProductsError) throw storeProductsError;
+    await syncStorefrontProductDetails(store.products);
     await replaceTable("go_inventory_accounts", store.inventory.map(inventoryToRow));
     await replaceTable("go_admin_orders", store.orders.map(orderToRow));
     await replaceTable("go_tickets", store.tickets.map(ticketToRow));
