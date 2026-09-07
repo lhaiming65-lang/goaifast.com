@@ -21,6 +21,7 @@ import AffiliateApply from "./pages/AffiliateApply";
 import OAuthConsent from "./pages/OAuthConsent";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminRoute from "./components/AdminRoute";
+import Admin from "./pages/Admin";
 import AdminProductDetails from "./pages/AdminProductDetails";
 import AdminProducts from "./pages/AdminProducts";
 
@@ -38,9 +39,7 @@ const ScrollToTop = () => {
 const HomeEntry = () => {
   const { search } = useLocation();
   return new URLSearchParams(search).get("admin") === "1" ? (
-    <AdminRoute>
-      <AdminProductDetails />
-    </AdminRoute>
+    <Admin />
   ) : (
     <Index />
   );
@@ -106,19 +105,11 @@ const App = () => (
             <Route path="/page/:slug" element={<StaticPage />} />
             <Route
               path="/admin"
-              element={
-                <AdminRoute>
-                  <AdminProductDetails />
-                </AdminRoute>
-              }
+              element={<Admin />}
             />
             <Route
               path="/admin.html"
-              element={
-                <AdminRoute>
-                  <AdminProductDetails />
-                </AdminRoute>
-              }
+              element={<Admin />}
             />
             <Route
               path="/admin/products"
