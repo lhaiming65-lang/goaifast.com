@@ -2,6 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   buildPublicStore,
   createSeedStore,
+  normalizeSiteContent,
   saveAdminStore,
   PUBLIC_STORE_KEY,
   type AdminOrder,
@@ -321,11 +322,16 @@ export async function loadRemotePublicStore() {
       selectTable("go_site_settings"),
     ]);
     const seed = createSeedStore();
+    const settingsPayload = settingsRows[0]?.settings_payload ?? {};
     const store: AdminStore = {
       ...seed,
       products: productRows.map(productFromRow).filter((product: AdminProduct) => product.status === "enabled"),
       ipPricingRules: ruleRows.map(ipRuleFromRow).filter((rule: IpPricingRule) => rule.enabled),
-      settings: settingsRows[0]?.settings_payload ?? seed.settings,
+      settings: {
+        ...seed.settings,
+        ...settingsPayload,
+        content: normalizeSiteContent(settingsPayload?.content),
+      },
       updatedAt: settingsRows[0]?.updated_at ?? new Date().toISOString(),
     };
     const publicStore = buildPublicStore(store);
@@ -365,6 +371,7 @@ export async function loadRemoteAdminStore(): Promise<RemoteSyncResult> {
     if (!productRows.length) return { ok: false, error: "数据库里还没有商品数据" };
 
     const seed = createSeedStore();
+    const settingsPayload = settingsRows[0]?.settings_payload ?? {};
     const store: AdminStore = {
       products: productRows.map(productFromRow),
       inventory: inventoryRows.map(inventoryFromRow),
@@ -375,7 +382,11 @@ export async function loadRemoteAdminStore(): Promise<RemoteSyncResult> {
       operators: operatorRows.map(operatorFromRow),
       ipPricingRules: ruleRows.map(ipRuleFromRow),
       analyticsEvents: analyticsRows.map(analyticsFromRow),
-      settings: settingsRows[0]?.settings_payload ?? seed.settings,
+      settings: {
+        ...seed.settings,
+        ...settingsPayload,
+        content: normalizeSiteContent(settingsPayload?.content),
+      },
       updatedAt: settingsRows[0]?.updated_at ?? new Date().toISOString(),
     };
     cacheStore(store);
@@ -398,7 +409,10 @@ export async function saveRemoteAdminStore(store: AdminStore): Promise<RemoteSyn
     await replaceTable("go_analytics_events", store.analyticsEvents.map(analyticsToRow));
     const { error } = await db.from("go_site_settings").upsert({
       id: "default",
-      settings_payload: store.settings,
+      settings_payload: {
+        ...store.settings,
+        content: normalizeSiteContent(store.settings.content),
+      },
       updated_at: new Date().toISOString(),
     });
     if (error) throw error;

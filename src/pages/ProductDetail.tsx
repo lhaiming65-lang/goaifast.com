@@ -6,6 +6,7 @@ import LanguageSwitcher from "@/components/LanguageSwitcher";
 import Footer from "@/components/Footer";
 import { useLocale } from "@/i18n/locale";
 import { useProductContent, useStoreProducts } from "@/hooks/useProductContent";
+import { useSiteContent } from "@/hooks/useSiteContent";
 import { icon, GRADIENTS } from "@/lib/productIcons";
 
 
@@ -24,6 +25,7 @@ const MONTH_OPTIONS = [1, 3, 6, 12];
 export default function ProductDetail() {
   const { t } = useTranslation();
   const { formatPrice, isRTL } = useLocale();
+  const siteContent = useSiteContent();
   const { slug } = useParams<{ slug: string }>();
   const location = useLocation();
   const navigate = useNavigate();
@@ -178,7 +180,7 @@ export default function ProductDetail() {
         <div className="container mx-auto px-4 flex items-center gap-4">
           <Link to="/" className="flex items-center gap-2">
             <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-xl">G</div>
-            <span className="text-xl font-bold text-gray-900 dark:text-white">GoAifast</span>
+            <span className="text-xl font-bold text-gray-900 dark:text-white">{siteContent.brandName}</span>
           </Link>
           <div className="flex-1" />
           <LanguageSwitcher />

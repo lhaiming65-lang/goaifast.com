@@ -3,9 +3,11 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Facebook, Send, Youtube, Twitter, Music2, Globe, ChevronDown } from "lucide-react";
 import PreferencesDialog from "./PreferencesDialog";
+import { useSiteContent } from "@/hooks/useSiteContent";
 
 export default function Footer() {
   const { t, i18n } = useTranslation();
+  const content = useSiteContent();
   const year = new Date().getFullYear();
   const [prefsOpen, setPrefsOpen] = useState(false);
   const langLabels: Record<string, string> = {
@@ -15,11 +17,11 @@ export default function Footer() {
   const currentLangLabel = langLabels[i18n.resolvedLanguage || i18n.language] || "English";
 
   const socials = [
-    { icon: Facebook, href: "https://www.facebook.com", label: "Facebook", target: "_blank" },
-    { icon: Send, href: "https://t.me", label: "Telegram", target: "_blank" },
-    { icon: Music2, href: "https://www.tiktok.com", label: "TikTok", target: "_blank" },
-    { icon: Youtube, href: "https://www.youtube.com", label: "YouTube", target: "_blank" },
-    { icon: Twitter, href: "https://x.com", label: "X", target: "_blank" },
+    { icon: Facebook, href: content.socialFacebook || "https://www.facebook.com", label: "Facebook", target: "_blank" },
+    { icon: Send, href: content.socialTelegram || "https://t.me", label: "Telegram", target: "_blank" },
+    { icon: Music2, href: content.socialTiktok || "https://www.tiktok.com", label: "TikTok", target: "_blank" },
+    { icon: Youtube, href: content.socialYoutube || "https://www.youtube.com", label: "YouTube", target: "_blank" },
+    { icon: Twitter, href: content.socialX || "https://x.com", label: "X", target: "_blank" },
   ];
 
   const about = [
@@ -87,7 +89,7 @@ export default function Footer() {
         {/* ABOUT */}
         <div>
           <h4 className="text-white text-base font-extrabold tracking-[0.02em] mb-6">
-            {t("footer.aboutTitle", "ABOUT")}
+            {content.footerAboutTitle || t("footer.aboutTitle", "ABOUT")}
           </h4>
           <ul className="space-y-4 text-[15px]">
             {about.map((l) => (
@@ -106,7 +108,7 @@ export default function Footer() {
         {/* LEGAL */}
         <div>
           <h4 className="text-white text-base font-extrabold tracking-[0.02em] mb-6">
-            {t("footer.legalTitle", "LEGAL")}
+            {content.footerLegalTitle || t("footer.legalTitle", "LEGAL")}
           </h4>
           <ul className="space-y-4 text-[15px]">
             {legal.map((l) => (
@@ -125,7 +127,7 @@ export default function Footer() {
         {/* LANGUAGE & CURRENCY */}
         <div>
           <h4 className="text-white text-base font-extrabold tracking-[0.02em] mb-6">
-            {t("footer.langTitle", "LANGUAGE & CURRENCY")}
+            {content.footerLanguageTitle || t("footer.langTitle", "LANGUAGE & CURRENCY")}
           </h4>
           <button
             onClick={() => setPrefsOpen(true)}
@@ -140,13 +142,13 @@ export default function Footer() {
         {/* CUSTOMER SERVICE */}
         <div>
           <h4 className="text-white text-base font-extrabold tracking-[0.02em] mb-6">
-            {t("footer.serviceTitle", "CUSTOMER SERVICE")}
+            {content.footerServiceTitle || t("footer.serviceTitle", "CUSTOMER SERVICE")}
           </h4>
           <div className="text-white text-[15px] font-semibold mb-1">
-            {t("footer.support", "Support")}
+            {content.footerSupportLabel || t("footer.support", "Support")}
           </div>
           <div className="text-sm text-gray-400 mb-5">
-            {t("footer.support247", "24/7 Support, 12 hours response")}
+            {content.footerSupportText || t("footer.support247", "24/7 Support, 12 hours response")}
           </div>
 
           <div className="grid grid-cols-3 gap-2 max-w-[220px]">
@@ -192,7 +194,7 @@ export default function Footer() {
             {t("footer.rights", "All copyrights, trade marks, service marks belong to the corresponding owners.")}
           </p>
           <p>
-            Copyright © {year} GoAifast.com All Rights.
+            Copyright © {year} {content.footerCopyright || "GoAifast.com All Rights."}
           </p>
           <p>
             <Link to="#" className="uppercase hover:text-white mx-1">

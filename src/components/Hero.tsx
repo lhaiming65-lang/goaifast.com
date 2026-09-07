@@ -2,10 +2,12 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "./ui/button";
 import { Search, TrendingUp, Shield, Zap, X, CheckCircle2, CreditCard, Headphones, Rocket } from "lucide-react";
+import { useSiteContent } from "@/hooks/useSiteContent";
 
 export default function Hero() {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
+  const content = useSiteContent();
 
   const scrollToProducts = () => {
     const el = document.getElementById("products");
@@ -27,21 +29,19 @@ export default function Hero() {
         <div className="text-center space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-1000">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-medium">
             <Zap className="w-4 h-4" />
-            {t("hero.badge")}
+            {content.heroBadge || t("hero.badge")}
           </div>
 
           <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight">
-            {t("hero.title1")}
+            {content.heroTitle || t("hero.title1")}
             <br />
             <span className="bg-gradient-brand bg-clip-text text-transparent">
-              {t("hero.title2")}
+              {content.heroAccent || t("hero.title2")}
             </span>
           </h1>
 
-          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
-            {t("hero.desc1")}
-            <br />
-            {t("hero.desc2")}
+          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto whitespace-pre-line">
+            {content.heroDescription || `${t("hero.desc1")}\n${t("hero.desc2")}`}
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -51,7 +51,7 @@ export default function Hero() {
               className="rounded-full gap-2 bg-gradient-brand hover:opacity-90 transition-opacity shadow-medium text-base px-8"
             >
               <Search className="w-5 h-5" />
-              {t("hero.browse")}
+              {content.heroPrimaryCta || t("hero.browse")}
             </Button>
             <Button
               size="lg"
@@ -59,7 +59,7 @@ export default function Hero() {
               onClick={() => setOpen(true)}
               className="rounded-full text-base px-8"
             >
-              {t("hero.learnMore")}
+              {content.heroSecondaryCta || t("hero.learnMore")}
             </Button>
           </div>
 
@@ -98,10 +98,10 @@ export default function Hero() {
                 <X className="w-5 h-5" />
               </button>
               <h3 className="text-2xl md:text-3xl font-extrabold mb-2">
-                {t("hero.moreTitle", "关于 GoAifast")}
+                {content.heroMoreTitle || t("hero.moreTitle", "关于 GoAifast")}
               </h3>
               <p className="text-white/90 text-sm md:text-base">
-                {t("hero.moreSub", "一站式数字订阅服务平台，官方正版 · 独享账号 · 极速交付")}
+                {content.heroMoreSubtitle || t("hero.moreSub", "一站式数字订阅服务平台，官方正版 · 独享账号 · 极速交付")}
               </p>
             </div>
 
@@ -133,7 +133,7 @@ export default function Hero() {
                 className="flex-1 rounded-full bg-gradient-brand hover:opacity-90 gap-2"
               >
                 <Search className="w-4 h-4" />
-                {t("hero.browse")}
+                {content.heroPrimaryCta || t("hero.browse")}
               </Button>
               <Button variant="outline" onClick={() => setOpen(false)} className="rounded-full flex-1">
                 {t("hero.close", "关闭")}
@@ -145,4 +145,3 @@ export default function Hero() {
     </section>
   );
 }
-

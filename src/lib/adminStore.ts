@@ -127,6 +127,32 @@ export interface AnalyticsEvent {
   note?: string;
 }
 
+export interface SiteContent {
+  brandName: string;
+  heroBadge: string;
+  heroTitle: string;
+  heroAccent: string;
+  heroDescription: string;
+  heroPrimaryCta: string;
+  heroSecondaryCta: string;
+  heroMoreTitle: string;
+  heroMoreSubtitle: string;
+  categoryTitle: string;
+  categorySubtitle: string;
+  footerAboutTitle: string;
+  footerLegalTitle: string;
+  footerLanguageTitle: string;
+  footerServiceTitle: string;
+  footerSupportLabel: string;
+  footerSupportText: string;
+  footerCopyright: string;
+  socialFacebook: string;
+  socialTelegram: string;
+  socialTiktok: string;
+  socialYoutube: string;
+  socialX: string;
+}
+
 export interface AdminStore {
   products: AdminProduct[];
   inventory: InventoryAccount[];
@@ -142,9 +168,41 @@ export interface AdminStore {
     announcement: string;
     autoDelivery: boolean;
     lowStockAlert: number;
+    content: SiteContent;
   };
   updatedAt: string;
 }
+
+export const defaultSiteContent: SiteContent = {
+  brandName: "GoAifast",
+  heroBadge: "正版数字订阅 · 极速自动交付",
+  heroTitle: "全球数字订阅",
+  heroAccent: "低价极速开通",
+  heroDescription: "精选流媒体、AI 工具、音乐会员、游戏点卡和软件订阅。下单后自动交付，后台可实时调整商品、价格和文案。",
+  heroPrimaryCta: "浏览商品",
+  heroSecondaryCta: "了解平台",
+  heroMoreTitle: "关于 GoAifast",
+  heroMoreSubtitle: "一站式数字订阅服务平台，官方正版 · 独享账号 · 极速交付",
+  categoryTitle: "选择你需要的服务",
+  categorySubtitle: "按分类快速找到流媒体、AI、音乐、点卡和软件会员。",
+  footerAboutTitle: "关于我们",
+  footerLegalTitle: "法律条款",
+  footerLanguageTitle: "语言与货币",
+  footerServiceTitle: "客户服务",
+  footerSupportLabel: "在线客服",
+  footerSupportText: "7x24 小时支持，订单问题优先处理",
+  footerCopyright: "GoAifast.com All Rights.",
+  socialFacebook: "https://www.facebook.com",
+  socialTelegram: "https://t.me",
+  socialTiktok: "https://www.tiktok.com",
+  socialYoutube: "https://www.youtube.com",
+  socialX: "https://x.com",
+};
+
+export const normalizeSiteContent = (content?: Partial<SiteContent> | null): SiteContent => ({
+  ...defaultSiteContent,
+  ...(content ?? {}),
+});
 
 const categoryName: Record<string, string> = {
   svod: "流媒体",
@@ -330,6 +388,7 @@ export function createSeedStore(): AdminStore {
       announcement: "全站数字商品极速交付，售后问题优先处理。",
       autoDelivery: true,
       lowStockAlert: 5,
+      content: defaultSiteContent,
     },
     updatedAt: new Date().toISOString(),
   };
@@ -449,6 +508,14 @@ function normalizeStore(candidate: AdminStore): AdminStore {
       status: event.status || "active",
       note: event.note ?? "",
     })),
+    settings: {
+      ...candidate.settings,
+      siteName: candidate.settings?.siteName || "GoAifast",
+      announcement: candidate.settings?.announcement ?? "",
+      autoDelivery: candidate.settings?.autoDelivery ?? true,
+      lowStockAlert: Number(candidate.settings?.lowStockAlert) || 5,
+      content: normalizeSiteContent(candidate.settings?.content),
+    },
     updatedAt: candidate.updatedAt || new Date().toISOString(),
   };
 }

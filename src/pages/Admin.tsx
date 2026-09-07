@@ -28,6 +28,7 @@ import {
   categoryOptions,
   cycleBadge,
   loadAdminStore,
+  normalizeSiteContent,
   productTitle,
   saveAdminStore,
   type AdminProduct,
@@ -38,6 +39,7 @@ import {
   type IpPricingRule,
   type Operator,
   type ProductBadge,
+  type SiteContent,
   type Supplier,
   type Ticket,
 } from "@/lib/adminStore";
@@ -333,6 +335,19 @@ export default function Admin() {
 
   const updateProduct = (id: string, patch: Partial<AdminStore["products"][number]>, message: string) => {
     commit({ ...store, products: store.products.map((product) => product.id === id ? { ...product, ...patch } : product) }, message);
+  };
+
+  const updateSiteContent = (patch: Partial<SiteContent>, message = "前台内容已保存") => {
+    commit({
+      ...store,
+      settings: {
+        ...store.settings,
+        content: {
+          ...store.settings.content,
+          ...patch,
+        },
+      },
+    }, message);
   };
 
   const openProductModal = (product?: AdminProduct) => setProductForm(productToForm(product));
@@ -1176,17 +1191,88 @@ export default function Admin() {
     );
   };
 
-  const renderSettings = () => (
-    <section className="rounded-lg border border-orange-100 bg-white p-5 shadow-sm">
-      <h2 className="text-lg font-black text-slate-950">站点设置</h2>
-      <div className="mt-5 grid gap-4 md:grid-cols-2">
-        <label className="text-sm font-bold text-slate-700">站点名称<input value={store.settings.siteName} onChange={(e) => commit({ ...store, settings: { ...store.settings, siteName: e.target.value } }, "站点名称已同步")} className="mt-2 w-full rounded-lg border border-orange-100 p-3 font-normal outline-none focus:ring-2 focus:ring-orange-200" /></label>
-        <label className="text-sm font-bold text-slate-700">低库存提醒<input type="number" value={store.settings.lowStockAlert} onChange={(e) => commit({ ...store, settings: { ...store.settings, lowStockAlert: Number(e.target.value) } }, "低库存规则已保存")} className="mt-2 w-full rounded-lg border border-orange-100 p-3 font-normal outline-none focus:ring-2 focus:ring-orange-200" /></label>
-        <label className="md:col-span-2 text-sm font-bold text-slate-700">前台公告<textarea value={store.settings.announcement} onChange={(e) => commit({ ...store, settings: { ...store.settings, announcement: e.target.value } }, "前台公告已保存")} className="mt-2 h-24 w-full rounded-lg border border-orange-100 p-3 font-normal outline-none focus:ring-2 focus:ring-orange-200" /></label>
+  const renderSettings = () => {
+    const content = normalizeSiteContent(store.settings.content);
+    const contentInput = (key: keyof SiteContent, label: string, placeholder = "") => (
+      <label className="text-sm font-bold text-slate-700">
+        {label}
+        <input
+          value={content[key] ?? ""}
+          onChange={(event) => updateSiteContent({ [key]: event.target.value } as Partial<SiteContent>)}
+          className="mt-2 w-full rounded-lg border border-orange-100 p-3 font-normal outline-none focus:ring-2 focus:ring-orange-200"
+          placeholder={placeholder}
+        />
+      </label>
+    );
+    const contentTextarea = (key: keyof SiteContent, label: string, placeholder = "") => (
+      <label className="md:col-span-2 text-sm font-bold text-slate-700">
+        {label}
+        <textarea
+          value={content[key] ?? ""}
+          onChange={(event) => updateSiteContent({ [key]: event.target.value } as Partial<SiteContent>)}
+          className="mt-2 h-24 w-full rounded-lg border border-orange-100 p-3 font-normal outline-none focus:ring-2 focus:ring-orange-200"
+          placeholder={placeholder}
+        />
+      </label>
+    );
+
+    return (
+      <div className="space-y-5">
+        <section className="rounded-lg border border-orange-100 bg-white p-5 shadow-sm">
+          <h2 className="text-lg font-black text-slate-950">站点设置</h2>
+          <p className="mt-1 text-sm text-slate-500">这里修改的是全站运营规则和前台可编辑内容，保存后会同步到数据库。</p>
+          <div className="mt-5 grid gap-4 md:grid-cols-2">
+            <label className="text-sm font-bold text-slate-700">站点名称<input value={store.settings.siteName} onChange={(e) => commit({ ...store, settings: { ...store.settings, siteName: e.target.value } }, "站点名称已同步")} className="mt-2 w-full rounded-lg border border-orange-100 p-3 font-normal outline-none focus:ring-2 focus:ring-orange-200" /></label>
+            <label className="text-sm font-bold text-slate-700">低库存提醒<input type="number" value={store.settings.lowStockAlert} onChange={(e) => commit({ ...store, settings: { ...store.settings, lowStockAlert: Number(e.target.value) } }, "低库存规则已保存")} className="mt-2 w-full rounded-lg border border-orange-100 p-3 font-normal outline-none focus:ring-2 focus:ring-orange-200" /></label>
+            <label className="md:col-span-2 text-sm font-bold text-slate-700">前台公告<textarea value={store.settings.announcement} onChange={(e) => commit({ ...store, settings: { ...store.settings, announcement: e.target.value } }, "前台公告已保存")} className="mt-2 h-24 w-full rounded-lg border border-orange-100 p-3 font-normal outline-none focus:ring-2 focus:ring-orange-200" /></label>
+          </div>
+          <button onClick={() => openActionModal({ kind: "settings-auto-delivery", targetId: "site-settings", title: store.settings.autoDelivery ? "关闭自动交付" : "开启自动交付", targetName: "站点自动交付规则", currentState: store.settings.autoDelivery ? "已开启" : "已关闭", nextState: store.settings.autoDelivery ? "已关闭" : "已开启", rule: "自动交付开关影响订单是否进入自动处理流程。", impact: store.settings.autoDelivery ? "关闭后新订单需要人工处理或进入待交付队列。" : "开启后符合规则的订单可自动发货。" })} className="mt-4 rounded-lg bg-orange-600 px-4 py-2 text-sm font-bold text-white">{store.settings.autoDelivery ? "关闭自动交付" : "开启自动交付"}</button>
+        </section>
+
+        <section className="rounded-lg border border-orange-100 bg-white p-5 shadow-sm">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-black text-slate-950">首页内容编辑</h2>
+              <p className="mt-1 text-sm text-slate-500">首页顶部标题、介绍、按钮和分类区文案都会直接影响前台。</p>
+            </div>
+            <button onClick={() => window.open("/", "_blank")} className="rounded-lg border border-orange-200 px-3 py-2 text-sm font-bold text-orange-700 hover:bg-orange-50">预览前台</button>
+          </div>
+          <div className="mt-5 grid gap-4 md:grid-cols-2">
+            {contentInput("brandName", "品牌名称")}
+            {contentInput("heroBadge", "首页徽标文案")}
+            {contentInput("heroTitle", "首页主标题第一行")}
+            {contentInput("heroAccent", "首页主标题强调行")}
+            {contentTextarea("heroDescription", "网站介绍/首页说明", "支持换行，适合写平台介绍、优势和服务范围。")}
+            {contentInput("heroPrimaryCta", "主按钮文案")}
+            {contentInput("heroSecondaryCta", "副按钮文案")}
+            {contentInput("heroMoreTitle", "了解平台弹窗标题")}
+            {contentTextarea("heroMoreSubtitle", "了解平台弹窗说明")}
+            {contentInput("categoryTitle", "分类区标题")}
+            {contentInput("categorySubtitle", "分类区副标题")}
+          </div>
+        </section>
+
+        <section className="rounded-lg border border-orange-100 bg-white p-5 shadow-sm">
+          <h2 className="text-lg font-black text-slate-950">页脚和社交链接</h2>
+          <p className="mt-1 text-sm text-slate-500">底部栏目、客服说明、版权和社交媒体入口可以统一在这里维护。</p>
+          <div className="mt-5 grid gap-4 md:grid-cols-2">
+            {contentInput("footerAboutTitle", "关于栏目标题")}
+            {contentInput("footerLegalTitle", "法律栏目标题")}
+            {contentInput("footerLanguageTitle", "语言货币标题")}
+            {contentInput("footerServiceTitle", "客服栏目标题")}
+            {contentInput("footerSupportLabel", "客服名称")}
+            {contentInput("footerSupportText", "客服说明")}
+            {contentInput("footerCopyright", "版权文案")}
+            {contentInput("socialFacebook", "Facebook 链接")}
+            {contentInput("socialTelegram", "Telegram 链接")}
+            {contentInput("socialTiktok", "TikTok 链接")}
+            {contentInput("socialYoutube", "YouTube 链接")}
+            {contentInput("socialX", "X 链接")}
+          </div>
+        </section>
       </div>
-      <button onClick={() => openActionModal({ kind: "settings-auto-delivery", targetId: "site-settings", title: store.settings.autoDelivery ? "关闭自动交付" : "开启自动交付", targetName: "站点自动交付规则", currentState: store.settings.autoDelivery ? "已开启" : "已关闭", nextState: store.settings.autoDelivery ? "已关闭" : "已开启", rule: "自动交付开关影响订单是否进入自动处理流程。", impact: store.settings.autoDelivery ? "关闭后新订单需要人工处理或进入待交付队列。" : "开启后符合规则的订单可自动发货。" })} className="mt-4 rounded-lg bg-orange-600 px-4 py-2 text-sm font-bold text-white">{store.settings.autoDelivery ? "关闭自动交付" : "开启自动交付"}</button>
-    </section>
-  );
+    );
+  };
 
   const renderAdmins = () => (
     <section className="rounded-lg border border-orange-100 bg-white p-5 shadow-sm">

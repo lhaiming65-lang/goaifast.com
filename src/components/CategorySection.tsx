@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { Tv, Music, Gamepad2, Sparkles, Store, Wallet, Monitor } from "lucide-react";
 import { Button } from "./ui/button";
+import { useSiteContent } from "@/hooks/useSiteContent";
 
 const categories = [
   { id: "svod", icon: Tv, color: "from-red-500 to-pink-500" },
@@ -18,6 +19,7 @@ interface Props {
 
 export default function CategorySection({ onSelectCategory }: Props) {
   const { t } = useTranslation();
+  const content = useSiteContent();
 
   const handleClick = (id: string) => {
     onSelectCategory(id);
@@ -30,8 +32,8 @@ export default function CategorySection({ onSelectCategory }: Props) {
 <section className="py-8 px-4">
       <div className="container mx-auto max-w-6xl">
         <div className="text-center space-y-4 mb-6">
-          <h2 className="text-3xl md:text-4xl font-bold">{t("category.title")}</h2>
-          <p className="text-muted-foreground text-base md:text-lg">{t("category.subtitle")}</p>
+          <h2 className="text-3xl md:text-4xl font-bold">{content.categoryTitle || t("category.title")}</h2>
+          <p className="text-muted-foreground text-base md:text-lg">{content.categorySubtitle || t("category.subtitle")}</p>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">

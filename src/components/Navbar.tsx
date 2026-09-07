@@ -8,6 +8,7 @@ import LanguageSwitcher from "./LanguageSwitcher";
 import AuthModal from "./AuthModal";
 import SearchDropdown from "./SearchDropdown";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSiteContent } from "@/hooks/useSiteContent";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,6 +20,7 @@ import {
 
 export default function Navbar() {
   const { t } = useTranslation();
+  const content = useSiteContent();
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const location = useLocation();
@@ -68,7 +70,7 @@ export default function Navbar() {
                 G
               </div>
               <span className="text-xl font-bold bg-gradient-brand bg-clip-text text-transparent">
-                GoAifast
+                {content.brandName}
               </span>
             </Link>
             <nav className="hidden lg:flex items-center gap-1 text-sm font-semibold">
