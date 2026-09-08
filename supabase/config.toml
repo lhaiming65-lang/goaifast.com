@@ -1,1 +1,14 @@
-project_id = "aknsgkavrvgxihnufyqg"
+project_id = "goaifast"
+
+# These handlers verify Supabase sessions themselves with auth.getUser().
+# Stripe webhooks verify the raw request signature with STRIPE_WEBHOOK_SECRET.
+[functions.stripe-checkout]
+verify_jwt = false
+[functions.stripe-refund]
+verify_jwt = false
+[functions.stripe-webhook]
+verify_jwt = false
+[functions.account-delete]
+verify_jwt = false
+[functions.commerce-reconcile]
+verify_jwt = false

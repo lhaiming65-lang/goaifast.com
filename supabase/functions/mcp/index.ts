@@ -2,7 +2,297 @@
 // To take ownership, delete this banner line; the plugin then leaves the file alone.
 // supabase function: mcp
 // Bundled from src/lib/mcp/index.ts by @lovable.dev/mcp-js.
+// <define:import.meta.env>
+var define_import_meta_env_default = { MODE: "production", BASE_URL: "/", DEV: false, PROD: true, SSR: false, VITE_SUPABASE_PROJECT_ID: "goaifast" };
+
+// src/lib/mcp/index.ts
+import { auth, defineMcp } from "npm:@lovable.dev/mcp-js@0.24.0";
+
+// src/lib/mcp/tools/list-products.ts
+import { createClient } from "npm:@supabase/supabase-js@^2.110.0";
+import { defineTool } from "npm:@lovable.dev/mcp-js@0.24.0";
+import { z } from "npm:zod@^4.4.3";
+var list_products_default = defineTool({
+  name: "list_products",
+  title: "List products",
+  description: "Read currently active digital products, USD prices and available stock from the live GoAifast catalog.",
+  inputSchema: {
+    category: z.string().max(100).optional().describe("Category name; omit or use 'all' for every category.")
+  },
+  annotations: {
+    readOnlyHint: true,
+    idempotentHint: true,
+    openWorldHint: false
+  },
+  handler: async ({ category }) => {
+    const client = createClient(
+      process.env.SUPABASE_URL,
+      process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_PUBLISHABLE_KEY,
+      {
+        auth: { persistSession: false, autoRefreshToken: false }
+      }
+    );
+    const { data, error } = await client.rpc("commerce_api", {
+      p_action: "catalog",
+      p_payload: {}
+    });
+    if (error)
+      return {
+        content: [{ type: "text", text: error.message }],
+        isError: true
+      };
+    const rows = data?.products ?? [];
+    const products = rows.filter(
+      (row) => !category || category === "all" || row.category === category
+    ).map((row) => ({
+      id: row.id,
+      title: row.title,
+      slug: row.slug,
+      category: row.category,
+      price_cents: row.price_cents,
+      currency: "USD",
+      available_stock: row.available_stock,
+      delivery_method: row.delivery_method,
+      warranty_days: row.warranty_days,
+      auto_replace: row.auto_replace,
+      max_replacements: row.max_replacements
+    }));
+    const categories = [
+      ...new Set(
+        rows.map((row) => row.category).filter((value) => typeof value === "string")
+      )
+    ];
+    const result = { count: products.length, categories, products };
+    return {
+      content: [{ type: "text", text: JSON.stringify(result) }],
+      structuredContent: result
+    };
+  }
+});
+
+// src/lib/mcp/tools/get-profile.ts
+import { createClient as createClient2 } from "npm:@supabase/supabase-js@^2.110.0";
+import { defineTool as defineTool2 } from "npm:@lovable.dev/mcp-js@0.24.0";
+function supabaseForUser(ctx) {
+  return createClient2(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_PUBLISHABLE_KEY,
+    {
+      global: { headers: { Authorization: `Bearer ${ctx.getToken()}` } },
+      auth: { persistSession: false, autoRefreshToken: false }
+    }
+  );
+}
+var get_profile_default = defineTool2({
+  name: "get_profile",
+  title: "Get my profile",
+  description: "Get the signed-in user's GoAifast profile (name, verified account email, contact phone and avatar).",
+  inputSchema: {},
+  annotations: {
+    readOnlyHint: true,
+    idempotentHint: true,
+    openWorldHint: false
+  },
+  handler: async (_input, ctx) => {
+    if (!ctx.isAuthenticated())
+      return {
+        content: [{ type: "text", text: "Not authenticated" }],
+        isError: true
+      };
+    const { data, error } = await supabaseForUser(ctx).from("profiles").select("id, email, full_name, avatar_url, phone").eq("id", ctx.getUserId()).maybeSingle();
+    if (error)
+      return {
+        content: [{ type: "text", text: error.message }],
+        isError: true
+      };
+    return {
+      content: [{ type: "text", text: JSON.stringify(data) }],
+      structuredContent: { profile: data }
+    };
+  }
+});
+
+// src/lib/mcp/tools/list-orders.ts
+import { createClient as createClient3 } from "npm:@supabase/supabase-js@^2.110.0";
+import { defineTool as defineTool3 } from "npm:@lovable.dev/mcp-js@0.24.0";
+import { z as z2 } from "npm:zod@^4.4.3";
+function supabaseForUser2(ctx) {
+  return createClient3(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_PUBLISHABLE_KEY,
+    {
+      global: { headers: { Authorization: `Bearer ${ctx.getToken()}` } },
+      auth: { persistSession: false, autoRefreshToken: false }
+    }
+  );
+}
+var list_orders_default = defineTool3({
+  name: "list_orders",
+  title: "List my orders",
+  description: "List the signed-in user's live GoAifast commerce orders, newest first, without delivery credentials.",
+  inputSchema: {
+    limit: z2.number().int().min(1).max(100).optional().describe("Max orders to return (default 20).")
+  },
+  annotations: {
+    readOnlyHint: true,
+    idempotentHint: true,
+    openWorldHint: false
+  },
+  handler: async ({ limit }, ctx) => {
+    if (!ctx.isAuthenticated())
+      return {
+        content: [{ type: "text", text: "Not authenticated" }],
+        isError: true
+      };
+    const { data, error } = await supabaseForUser2(ctx).rpc("commerce_api", {
+      p_action: "orders",
+      p_payload: {}
+    });
+    if (error)
+      return {
+        content: [{ type: "text", text: error.message }],
+        isError: true
+      };
+    const rows = data?.orders ?? [];
+    const owned = rows.filter((row) => row.user_id === ctx.getUserId());
+    const orders = owned.slice(0, limit ?? 20).map((row) => ({
+      id: row.id,
+      order_number: row.order_number,
+      status: row.status,
+      total_cents: row.total_cents,
+      currency: row.currency,
+      payment_method: row.payment_method,
+      created_at: row.created_at,
+      delivered_at: row.delivered_at,
+      completed_at: row.completed_at
+    }));
+    const result = { count: orders.length, total: owned.length, orders };
+    return {
+      content: [{ type: "text", text: JSON.stringify(result) }],
+      structuredContent: result
+    };
+  }
+});
+
+// src/lib/mcp/tools/get-order.ts
+import { createClient as createClient4 } from "npm:@supabase/supabase-js@^2.110.0";
+import { defineTool as defineTool4 } from "npm:@lovable.dev/mcp-js@0.24.0";
+import { z as z3 } from "npm:zod@^4.4.3";
+function supabaseForUser3(ctx) {
+  return createClient4(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_PUBLISHABLE_KEY,
+    {
+      global: { headers: { Authorization: `Bearer ${ctx.getToken()}` } },
+      auth: { persistSession: false, autoRefreshToken: false }
+    }
+  );
+}
+var failure = (text) => ({
+  content: [{ type: "text", text }],
+  isError: true
+});
+var get_order_default = defineTool4({
+  name: "get_order",
+  title: "Get order details",
+  description: "Get an order owned by the signed-in user, by order number or UUID. Includes delivery status, refunds and warranty; secret codes must be viewed securely on the website.",
+  inputSchema: {
+    order_no: z3.string().max(100).optional().describe("Human order number, e.g. GO-20260909-ABCDEF123456."),
+    id: z3.string().uuid().optional().describe("Order UUID.")
+  },
+  annotations: {
+    readOnlyHint: true,
+    idempotentHint: true,
+    openWorldHint: false
+  },
+  handler: async ({ order_no, id }, ctx) => {
+    if (!ctx.isAuthenticated()) return failure("Not authenticated");
+    if (!order_no && !id) return failure("Provide order_no or id");
+    const client = supabaseForUser3(ctx);
+    let orderId = id;
+    if (!orderId) {
+      const { data: listing, error: error2 } = await client.rpc("commerce_api", {
+        p_action: "orders",
+        p_payload: {}
+      });
+      if (error2) return failure(error2.message);
+      const rows = listing?.orders ?? [];
+      orderId = rows.find(
+        (row2) => row2.user_id === ctx.getUserId() && row2.order_number === order_no
+      )?.id;
+      if (!orderId) return failure("Order not found or access denied");
+    }
+    const { data, error } = await client.rpc("commerce_api", {
+      p_action: "order",
+      p_payload: { order_id: orderId }
+    });
+    if (error) return failure(error.message);
+    if (data?.order?.user_id !== ctx.getUserId())
+      return failure("Order not found or access denied");
+    const row = data.order;
+    const items = data.items ?? [];
+    const deliveries = data.deliveries ?? [];
+    const refunds = data.refunds ?? [];
+    const result = {
+      order: {
+        id: row.id,
+        order_number: row.order_number,
+        status: row.status,
+        total_cents: row.total_cents,
+        currency: row.currency,
+        payment_method: row.payment_method,
+        created_at: row.created_at,
+        delivered_at: row.delivered_at,
+        completed_at: row.completed_at
+      },
+      items: items.map((item) => ({
+        id: item.id,
+        product_id: item.product_id,
+        title: item.title,
+        quantity: item.quantity,
+        unit_price_cents: item.unit_price_cents,
+        delivery_method: item.delivery_method,
+        warranty_days: item.warranty_days,
+        auto_replace: item.auto_replace,
+        max_replacements: item.max_replacements,
+        replacement_count: item.replacement_count
+      })),
+      deliveries: deliveries.map((delivery) => ({
+        item_id: delivery.item_id,
+        status: delivery.status,
+        generation: delivery.generation,
+        created_at: delivery.created_at
+      })),
+      refunds: refunds.map((refund) => ({
+        id: refund.id,
+        status: refund.status,
+        amount_cents: refund.amount_cents,
+        currency: refund.currency,
+        created_at: refund.created_at
+      })),
+      details_path: "/order/" + orderId
+    };
+    return {
+      content: [{ type: "text", text: JSON.stringify(result) }],
+      structuredContent: result
+    };
+  }
+});
+
+// src/lib/mcp/index.ts
+var supabaseUrl = process.env.SUPABASE_URL || define_import_meta_env_default.VITE_SUPABASE_URL?.trim() || "https://rzphsmpkdjjbptrhuxsb.supabase.co";
+var mcp_default = defineMcp({
+  name: "goaifast-mcp",
+  title: "GoAifast",
+  version: "0.1.0",
+  instructions: "Tools for the GoAifast digital subscription marketplace. Use list_products to browse the catalog, and get_profile / list_orders / get_order to read the signed-in user's account data.",
+  auth: auth.oauth.issuer({
+    issuer: `${supabaseUrl.replace(/\/$/, "")}/auth/v1`,
+    acceptedAudiences: "authenticated"
+  }),
+  tools: [list_products_default, get_profile_default, list_orders_default, get_order_default]
+});
+
 // lovable-mcp-supabase-entry.ts
-import mcp from "npm:C:\\Users\\GG\\Documents\\\u7F51\u9875\\goaifast-lovable\\src\\lib\\mcp\\index.ts";
 import { createSupabaseHandler } from "npm:@lovable.dev/mcp-js@0.24.0/stacks/supabase";
-Deno.serve(createSupabaseHandler(mcp, { functionName: "mcp" }));
+Deno.serve(createSupabaseHandler(mcp_default, { functionName: "mcp" }));

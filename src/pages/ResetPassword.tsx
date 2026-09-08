@@ -16,47 +16,86 @@ export default function ResetPassword() {
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
   const [ready, setReady] = useState(false);
+  const [checking, setChecking] = useState(true);
+  const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
-    // Supabase recovery link creates a session with type=recovery in URL hash.
+    let active = true;
     const check = async () => {
-      const { data } = await supabase.auth.getSession();
-      setReady(!!data.session);
+      try {
+        const { data, error } = await supabase.auth.getUser();
+        if (active) {
+          setReady(!error && !!data.user);
+          setChecking(false);
+        }
+      } catch {
+        if (active) setChecking(false);
+      }
     };
     check();
     const { data: sub } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") setReady(true);
+      if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") {
+        setReady(true);
+        setChecking(false);
+      }
+      if (event === "SIGNED_OUT") setReady(false);
     });
-    return () => sub.subscription.unsubscribe();
+    return () => {
+      active = false;
+      sub.subscription.unsubscribe();
+    };
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const pwdParsed = z.string().min(6, { message: t("auth.passwordTooShort") }).max(72).safeParse(password);
+    setErrorMessage("");
+    if (!ready) return;
+    const pwdParsed = z
+      .string()
+      .min(8, { message: "新密码至少需要 8 个字符" })
+      .max(72)
+      .safeParse(password);
     if (!pwdParsed.success) {
-      toast.error(pwdParsed.error.issues[0].message);
+      setErrorMessage(pwdParsed.error.issues[0].message);
       return;
     }
     if (password !== confirm) {
-      toast.error(t("auth.passwordMismatch"));
+      setErrorMessage(t("auth.passwordMismatch"));
       return;
     }
     setLoading(true);
-    const { error } = await supabase.auth.updateUser({ password: pwdParsed.data });
-    setLoading(false);
-    if (error) {
-      toast.error(error.message);
-      return;
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: pwdParsed.data,
+      });
+      if (error) throw error;
+      setPassword("");
+      setConfirm("");
+      const { error: signOutError } = await supabase.auth.signOut();
+      toast.success(t("auth.passwordUpdated"));
+      if (signOutError) {
+        setErrorMessage(
+          "密码已更新，但退出登录失败，请前往账户中心退出所有设备。",
+        );
+        return;
+      }
+      navigate("/auth", { replace: true });
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "密码更新失败，请重试",
+      );
+    } finally {
+      setLoading(false);
     }
-    toast.success(t("auth.passwordUpdated"));
-    await supabase.auth.signOut();
-    navigate("/auth");
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-secondary/30 to-background flex flex-col">
       <header className="p-4">
-        <Link to="/" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+        <Link
+          to="/"
+          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+        >
           <ArrowLeft className="w-4 h-4" />
           {t("auth.backHome")}
         </Link>
@@ -67,11 +106,32 @@ export default function ResetPassword() {
             <h1 className="text-2xl font-bold bg-gradient-brand bg-clip-text text-transparent">
               {t("auth.resetPasswordTitle")}
             </h1>
-            <p className="text-sm text-muted-foreground mt-2">{t("auth.resetPasswordSubtitle")}</p>
+            <p className="text-sm text-muted-foreground mt-2">
+              {t("auth.resetPasswordSubtitle")}
+            </p>
           </div>
 
-          {!ready ? (
-            <p className="text-center text-sm text-muted-foreground">Loading…</p>
+          {errorMessage && (
+            <p
+              role="alert"
+              className="mb-4 rounded-lg bg-destructive/5 p-3 text-sm text-destructive"
+            >
+              {errorMessage}
+            </p>
+          )}
+          {checking ? (
+            <p className="text-center text-sm text-muted-foreground">
+              正在验证重置链接…
+            </p>
+          ) : !ready ? (
+            <div className="space-y-4 text-center">
+              <p className="text-sm text-muted-foreground">
+                重置链接无效或已过期，请重新发送密码重置邮件。
+              </p>
+              <Button asChild variant="outline">
+                <Link to="/auth?mode=forgot">重新获取重置链接</Link>
+              </Button>
+            </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
@@ -84,9 +144,10 @@ export default function ResetPassword() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="pl-10 h-11"
-                    minLength={6}
+                    minLength={8}
                     maxLength={72}
                     required
+                    autoComplete="new-password"
                   />
                 </div>
               </div>
@@ -100,9 +161,10 @@ export default function ResetPassword() {
                     value={confirm}
                     onChange={(e) => setConfirm(e.target.value)}
                     className="pl-10 h-11"
-                    minLength={6}
+                    minLength={8}
                     maxLength={72}
                     required
+                    autoComplete="new-password"
                   />
                 </div>
               </div>

@@ -143,33 +143,36 @@ export function useProductContent(slug?: string) {
 
 /** True when the signed-in user has the admin role. */
 export function useIsAdmin(userId?: string) {
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [checking, setChecking] = useState(true);
+  const [result, setResult] = useState<{ userId?: string; isAdmin: boolean; checking: boolean }>({ isAdmin: false, checking: false });
 
   useEffect(() => {
     if (!userId) {
-      setIsAdmin(false);
-      setChecking(false);
+      setResult({ userId: undefined, isAdmin: false, checking: false });
       return;
     }
     let active = true;
-    supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId)
-      .eq("role", "admin")
-      .maybeSingle()
-      .then(({ data }) => {
-        if (!active) return;
-        setIsAdmin(!!data);
-        setChecking(false);
-      });
-    return () => {
-      active = false;
-    };
+    setResult({ userId, isAdmin: false, checking: true });
+    void (async () => {
+      try {
+        const { data, error } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", userId)
+          .eq("role", "admin")
+          .maybeSingle();
+        if (active) setResult({ userId, isAdmin: !error && !!data, checking: false });
+      } catch {
+        if (active) setResult({ userId, isAdmin: false, checking: false });
+      }
+    })();
+    return () => { active = false; };
   }, [userId]);
 
-  return { isAdmin, checking };
+  // The old identity's role must never authorize even one render for a new identity.
+  return {
+    isAdmin: !!userId && result.userId === userId && result.isAdmin,
+    checking: !!userId && (result.userId !== userId || result.checking),
+  };
 }
 
 /** All product overrides, keyed by slug, kept in sync via realtime. */

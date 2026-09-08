@@ -1,5 +1,16 @@
 # Welcome to your Lovable project
 
+## 数字商城业务流程
+
+已增加购物车、服务端订单、Stripe 支付、钱包及退款、库存发货、售后和账户删除。
+
+- [业务审计、已实现范围和待补功能](docs/commerce-audit.md)
+- [数据库 / Stripe / Auth 配置与上线验收](docs/commerce-setup.md)
+- [服务端 API 合约](docs/commerce-contract.md)
+
+本地验证：`npm run typecheck`、`npm test`、`npm run check:edge`、`npm run build`。
+新增后端需要应用迁移并部署 Edge Functions；启动 Vite 不会自动完成云端部署。
+
 ## Project info
 
 **URL**: https://lovable.dev/projects/d5c1268b-6a64-4b51-ad18-e089279a77d5

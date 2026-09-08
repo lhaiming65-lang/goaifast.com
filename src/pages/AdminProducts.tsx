@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2, Save, Loader2, X, ImageIcon, ExternalLink, Package } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
 import { categories } from "@/data/products";
 import { GRADIENTS } from "@/lib/productIcons";
 import { useStoreProducts, type StoreProductRow } from "@/hooks/useProductContent";
@@ -16,11 +17,12 @@ const BADGES = [
 
 const STATUSES = [
   { value: "active", label: "上架，前台展示" },
-  { value: "off", label: "下架，前台隐藏" },
+  { value: "inactive", label: "下架，前台隐藏" },
 ];
 
 const DELIVERY_METHODS = [
-  { value: "auto", label: "自动交付" },
+  { value: "automatic", label: "自动交付" },
+  { value: "auto", label: "自动交付（兼容原配置）" },
   { value: "manual", label: "人工交付" },
   { value: "auto_manual", label: "自动+人工" },
 ];
@@ -49,8 +51,10 @@ const area =
   "w-full px-4 py-3 rounded-2xl bg-background border border-border text-sm outline-none focus:ring-2 focus:ring-primary/50";
 const label = "text-sm font-semibold text-foreground mb-2 block";
 
-export default function AdminProducts() {
+export default function AdminProducts({ embedded = false }: { embedded?: boolean }) {
   const rows = useStoreProducts();
+  const queryClient = useQueryClient();
+  const editingBase = useRef<StoreProductRow | null>(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<(StoreProductRow | Omit<StoreProductRow, "id">) | null>(null);
   const [saving, setSaving] = useState(false);
@@ -72,13 +76,16 @@ export default function AdminProducts() {
       return;
     }
     setSaving(true);
-    const { id, ...payload } = editing as StoreProductRow;
+    const { id } = editing as StoreProductRow;
+    const keys = Object.keys(emptyDraft()) as (keyof Omit<StoreProductRow, "id">)[];
+    const payload = Object.fromEntries(keys.filter(key => !id || !editingBase.current || editing[key] !== editingBase.current[key]).map(key => [key, editing[key]]));
     const { error } = id
       ? await supabase.from("store_products").update(payload as never).eq("id", id)
       : await supabase.from("store_products").insert(payload as never);
     setSaving(false);
     if (error) toast.error(error.message);
     else {
+      void queryClient.invalidateQueries({ queryKey: ["commerce-catalog"] });
       toast.success("已保存，前台已实时同步");
       setEditing(null);
     }
@@ -94,18 +101,18 @@ export default function AdminProducts() {
   const sorted = useMemo(() => rows, [rows]);
 
   return (
-    <div className="min-h-screen bg-muted/30">
-      <header className="bg-card border-b border-border sticky top-0 z-30">
-        <div className="container mx-auto px-4 py-4 flex items-center gap-4">
-          <Link to="/" className="flex items-center gap-2">
+    <div className={embedded ? "overflow-hidden rounded-lg border border-orange-100 bg-white" : "min-h-screen bg-muted/30"}>
+      <header className={embedded ? "bg-card border-b border-border" : "bg-card border-b border-border sticky top-0 z-30"}>
+        <div className="container mx-auto px-4 py-4 flex flex-wrap items-center gap-4">
+          {!embedded && <Link to="/admin" className="flex items-center gap-2">
             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-primary-foreground font-bold">G</div>
             <span className="font-bold text-foreground">GoAifast 后台</span>
-          </Link>
+          </Link>}
           <span className="text-sm font-semibold text-primary">商品管理（SKU）</span>
           <Link to="/admin/products" className="text-sm text-muted-foreground hover:text-primary">详情页内容管理 →</Link>
           <div className="flex-1" />
           <button
-            onClick={() => setEditing(emptyDraft())}
+            onClick={() => { editingBase.current = null; setEditing(emptyDraft()); }}
             className="inline-flex items-center gap-2 bg-primary text-primary-foreground font-semibold px-5 py-2 rounded-full"
           >
             <Plus className="w-4 h-4" /> 新增商品
@@ -147,7 +154,7 @@ export default function AdminProducts() {
                   <span>库存 {row.stock}</span>
                 </div>
                 <div className="flex items-center gap-3 pt-1">
-                  <button onClick={() => setEditing(row)} className="inline-flex items-center gap-1 text-sm font-semibold text-primary">
+                  <button onClick={() => { editingBase.current = row; setEditing({ ...row }); }} className="inline-flex items-center gap-1 text-sm font-semibold text-primary">
                     <Pencil className="w-4 h-4" /> 编辑
                   </button>
                   <a href={`/product/${encodeURIComponent(row.slug)}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-primary">
@@ -257,7 +264,7 @@ export default function AdminProducts() {
                     <input type="number" step="0.01" className={input} value={editing.cost} onChange={(e) => set("cost", Number(e.target.value))} />
                   </div>
                   <div>
-                    <span className={label}>库存数量</span>
+                    <span className={label}>供货数量（商城可售数量由有效卡密计算）</span>
                     <input type="number" className={input} value={editing.stock} onChange={(e) => set("stock", Number(e.target.value))} />
                   </div>
                   <div>

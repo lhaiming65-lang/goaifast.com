@@ -1,0 +1,5 @@
+{
+  "imports": {
+    "@/integrations/supabase/client": "./supabase-client-fixture.ts"
+  }
+}

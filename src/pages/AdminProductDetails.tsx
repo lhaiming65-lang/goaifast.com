@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { Plus, Trash2, Save, ExternalLink, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { products } from "@/data/products";
+import { useStoreProducts } from "@/hooks/useProductContent";
 import { ICON_NAMES, GRADIENTS } from "@/lib/productIcons";
 import type { ProductContent, HighlightItem, FeatureItem, ScoreItem, ReviewItem, SubscriptionType, UsageItem } from "@/hooks/useProductContent";
 
@@ -45,9 +45,12 @@ interface SubTemplate {
   types: SubscriptionType[];
 }
 
-export default function AdminProductDetails() {
+export default function AdminProductDetails({ embedded = false }: { embedded?: boolean }) {
+  const catalogRows = useStoreProducts();
+  const products = useMemo(() => catalogRows.map(row => ({ titleKey: row.slug, title: row.title, price: row.price, originalPrice: row.original_price })), [catalogRows]);
   const [rows, setRows] = useState<Record<string, ProductContent>>({});
-  const [slug, setSlug] = useState(products[0]?.titleKey ?? "");
+  const [slug, setSlug] = useState("");
+  useEffect(() => { if (!slug && products.length) setSlug(products[0].titleKey); }, [products, slug]);
   const [draft, setDraft] = useState<ProductContent | null>(null);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -104,10 +107,10 @@ export default function AdminProductDetails() {
     else toast.success("模板已保存，可套用到其他产品");
   };
 
-  const baseProduct = useMemo(() => products.find((p) => p.titleKey === slug), [slug]);
+  const baseProduct = useMemo(() => products.find((p) => p.titleKey === slug), [products, slug]);
 
   useEffect(() => {
-    if (loading) return;
+    if (loading || !slug) return;
     setDraft(
       rows[slug]
         ? { ...emptyContent(slug, slug), ...rows[slug] }
@@ -139,6 +142,7 @@ export default function AdminProductDetails() {
     else toast.success("已删除，前台恢复默认内容");
   };
 
+  if (!loading && !products.length) return <div className="rounded-lg border bg-white p-8 text-center">暂无可编辑商品，请先在 <Link className="text-orange-600 underline" to="/admin/skus">SKU 配置</Link> 中添加商品。</div>;
   if (loading || !draft) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -148,13 +152,13 @@ export default function AdminProductDetails() {
   }
 
   return (
-    <div className="min-h-screen bg-muted/30">
-      <header className="bg-card border-b border-border sticky top-0 z-30">
-        <div className="container mx-auto px-4 py-4 flex items-center gap-4">
-          <Link to="/" className="flex items-center gap-2">
+    <div className={embedded ? "overflow-hidden rounded-lg border border-orange-100 bg-white" : "min-h-screen bg-muted/30"}>
+      <header className={embedded ? "bg-card border-b border-border" : "bg-card border-b border-border sticky top-0 z-30"}>
+        <div className="container mx-auto px-4 py-4 flex flex-wrap items-center gap-4">
+          {!embedded && <Link to="/admin" className="flex items-center gap-2">
             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-primary-foreground font-bold">G</div>
             <span className="font-bold text-foreground">GoAifast 后台</span>
-          </Link>
+          </Link>}
           <span className="text-sm font-semibold text-primary">商品详情页管理</span>
           <Link to="/admin/skus" className="text-sm text-muted-foreground hover:text-primary">商品管理（SKU）→</Link>
           <div className="flex-1" />

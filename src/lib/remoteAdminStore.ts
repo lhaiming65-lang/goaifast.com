@@ -1,3 +1,4 @@
+import { changedRows, type AdminRow } from "@/lib/adminChanges";
 import { supabase } from "@/integrations/supabase/client";
 import {
   buildPublicStore,
@@ -74,58 +75,6 @@ const productToRow = (product: AdminProduct, index: number) => ({
   sort_order: index,
   updated_at: new Date().toISOString(),
 });
-
-const productToStoreProductRow = (product: AdminProduct) => ({
-  slug: product.titleKey,
-  title: product.titleKey,
-  category: product.category,
-  price: product.price,
-  original_price: product.originalPrice,
-  cost: product.cost,
-  stock: product.stock ?? 0,
-  badge: product.badge ?? "",
-  status: product.status === "enabled" ? "active" : "inactive",
-  delivery_method: product.deliveryMode,
-  subtitle: product.subtitle ?? "",
-  delivery_rules: product.delivery ?? "",
-  detail_description: product.description ?? "",
-  color: product.color,
-  image_url: product.imageUrl ?? "",
-  updated_at: new Date().toISOString(),
-});
-
-async function syncStorefrontProductDetails(products: AdminProduct[]) {
-  const editableProducts = products.filter((product) => product.status === "enabled");
-  if (!editableProducts.length) return;
-
-  const slugs = editableProducts.map((product) => product.titleKey);
-  const { data, error } = await db.from("product_details").select("*").in("slug", slugs);
-  if (error) throw error;
-
-  const existingBySlug = new Map((data ?? []).map((row: any) => [row.slug, row]));
-  const rows = editableProducts.map((product) => {
-    const existing = existingBySlug.get(product.titleKey) ?? {};
-    const deliverySteps = String(product.delivery ?? "")
-      .split(/\r?\n|；|;/)
-      .map((line) => line.trim())
-      .filter(Boolean);
-    return {
-      ...existing,
-      slug: product.titleKey,
-      title: product.titleKey,
-      monthly_price: product.price,
-      original_price: product.originalPrice,
-      description: product.description || existing.description || "",
-      intro_badge: existing.intro_badge || product.subtitle || product.titleKey,
-      intro_body: product.description || existing.intro_body || "",
-      how_it_works_title: existing.how_it_works_title || "交付与售后规则",
-      how_it_works: deliverySteps.length ? deliverySteps : (existing.how_it_works ?? []),
-    };
-  });
-
-  const { error: upsertError } = await db.from("product_details").upsert(rows, { onConflict: "slug" });
-  if (upsertError) throw upsertError;
-}
 
 const inventoryFromRow = (row: any): InventoryAccount => ({
   id: row.id,
@@ -353,14 +302,6 @@ async function selectTable(table: string, order = "id") {
   return data ?? [];
 }
 
-async function replaceTable(table: string, rows: unknown[]) {
-  const { error: deleteError } = await db.from(table).delete().neq("id", "__never__");
-  if (deleteError) throw deleteError;
-  if (!rows.length) return;
-  const { error: insertError } = await db.from(table).insert(rows);
-  if (insertError) throw insertError;
-}
-
 function cacheStore(store: AdminStore) {
   saveAdminStore(store);
   cachePublicStore(buildPublicStore(store));
@@ -420,8 +361,6 @@ export async function loadRemoteAdminStore(): Promise<RemoteSyncResult> {
       selectTable("go_site_settings"),
     ]);
 
-    if (!productRows.length) return { ok: false, error: "数据库里还没有商品数据" };
-
     const seed = createSeedStore();
     const settingsPayload = settingsRows[0]?.settings_payload ?? {};
     const store: AdminStore = {
@@ -448,32 +387,28 @@ export async function loadRemoteAdminStore(): Promise<RemoteSyncResult> {
   }
 }
 
-export async function saveRemoteAdminStore(store: AdminStore): Promise<RemoteSyncResult> {
+export async function saveRemoteAdminStore(store: AdminStore, previous: AdminStore): Promise<RemoteSyncResult> {
   try {
-    await replaceTable("go_products", store.products.map(productToRow));
-    const { error: storeProductsError } = await db
-      .from("store_products")
-      .upsert(store.products.map(productToStoreProductRow), { onConflict: "slug" });
-    if (storeProductsError) throw storeProductsError;
-    await syncStorefrontProductDetails(store.products);
-    await replaceTable("go_inventory_accounts", store.inventory.map(inventoryToRow));
-    await replaceTable("go_admin_orders", store.orders.map(orderToRow));
-    await replaceTable("go_tickets", store.tickets.map(ticketToRow));
-    await replaceTable("go_suppliers", store.suppliers.map(supplierToRow));
-    await replaceTable("go_customers", store.customers.map(customerToRow));
-    await replaceTable("go_admin_operators", store.operators.map(operatorToRow));
-    await replaceTable("go_ip_pricing_rules", store.ipPricingRules.map(ipRuleToRow));
-    await replaceTable("go_analytics_events", store.analyticsEvents.map(analyticsToRow));
-    const { error } = await db.from("go_site_settings").upsert({
-      id: "default",
-      settings_payload: {
-        ...store.settings,
-        content: normalizeSiteContent(store.settings.content),
-      },
-      updated_at: new Date().toISOString(),
-    });
-    if (error) throw error;
-    cachePublicStore(buildPublicStore(store));
+    const tables = (value: AdminStore): [string, AdminRow[]][] => [
+      ["go_products", value.products.map(productToRow)],
+      ["go_inventory_accounts", value.inventory.map(inventoryToRow)],
+      ["go_admin_orders", value.orders.map(orderToRow)],
+      ["go_tickets", value.tickets.map(ticketToRow)],
+      ["go_suppliers", value.suppliers.map(supplierToRow)],
+      ["go_customers", value.customers.map(customerToRow)],
+      ["go_admin_operators", value.operators.map(operatorToRow)],
+      ["go_ip_pricing_rules", value.ipPricingRules.map(ipRuleToRow)],
+      ["go_analytics_events", value.analyticsEvents.map(analyticsToRow)],
+      ["go_site_settings", [{ id: "default", settings_payload: { ...value.settings, content: normalizeSiteContent(value.settings.content) } }]],
+    ];
+    const before = new Map(tables(previous));
+    const changes = tables(store).map(([table, rows]) => changedRows(table, before.get(table) ?? [], rows))
+      .filter(change => change.upserts.length || change.deletes.length);
+    if (changes.length) {
+      const { error } = await db.rpc("go_admin_apply_changes", { p_changes: changes });
+      if (error) throw error;
+    }
+    cacheStore(store);
     return { ok: true, store };
   } catch (error) {
     return { ok: false, error: errorMessage(error) };

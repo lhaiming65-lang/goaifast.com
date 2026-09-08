@@ -1,4 +1,19 @@
-export const products = [
+export type ProductBadge = "hot" | "new" | "recommend";
+export interface Product {
+  titleKey: string;
+  price: number;
+  originalPrice: number;
+  color: string;
+  category: string;
+  badge?: ProductBadge;
+  stock?: number;
+  delivery?: string;
+  imageUrl?: string;
+  subtitle?: string;
+  description?: string;
+}
+
+export const products: Product[] = [
   // SVOD (streaming video)
   { titleKey: "Netflix", price: 29.99, originalPrice: 99.99, color: "bg-gradient-to-br from-red-600 to-red-800", badge: "hot", category: "svod" },
   { titleKey: "Disney+", price: 24.99, originalPrice: 79.99, color: "bg-gradient-to-br from-blue-400 to-blue-600", badge: "new", category: "svod" },

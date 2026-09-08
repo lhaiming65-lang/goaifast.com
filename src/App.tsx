@@ -22,8 +22,9 @@ import OAuthConsent from "./pages/OAuthConsent";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminRoute from "./components/AdminRoute";
 import Admin from "./pages/Admin";
-import AdminProductDetails from "./pages/AdminProductDetails";
-import AdminProducts from "./pages/AdminProducts";
+import Cart from "./pages/Cart";
+import Wallet from "./pages/Wallet";
+import Support from "./pages/Support";
 
 
 const queryClient = new QueryClient();
@@ -39,7 +40,7 @@ const ScrollToTop = () => {
 const HomeEntry = () => {
   const { search } = useLocation();
   return new URLSearchParams(search).get("admin") === "1" ? (
-    <Admin />
+    <AdminRoute><Admin /></AdminRoute>
   ) : (
     <Index />
   );
@@ -56,6 +57,9 @@ const App = () => (
           <Routes>
             <Route path="/" element={<HomeEntry />} />
             <Route path="/product/:slug" element={<ProductDetail />} />
+            <Route path="/cart" element={<Cart />} />
+            <Route path="/wallet" element={<ProtectedRoute><Wallet /></ProtectedRoute>} />
+            <Route path="/support" element={<ProtectedRoute><Support /></ProtectedRoute>} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/login" element={<Auth />} />
             <Route path="/signup" element={<Auth />} />
@@ -105,17 +109,18 @@ const App = () => (
             <Route path="/page/:slug" element={<StaticPage />} />
             <Route
               path="/admin"
-              element={<Admin />}
+              element={<AdminRoute><Admin /></AdminRoute>}
             />
             <Route
               path="/admin.html"
-              element={<Admin />}
+              element={<AdminRoute><Admin /></AdminRoute>}
             />
+            <Route path="/admin/content" element={<AdminRoute><Admin /></AdminRoute>} />
             <Route
               path="/admin/products"
               element={
                 <AdminRoute>
-                  <AdminProductDetails />
+                  <Admin />
                 </AdminRoute>
               }
             />
@@ -123,7 +128,7 @@ const App = () => (
               path="/admin/skus"
               element={
                 <AdminRoute>
-                  <AdminProducts />
+                  <Admin />
                 </AdminRoute>
               }
             />

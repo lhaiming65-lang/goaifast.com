@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   Activity,
   BarChart3,
@@ -31,7 +31,6 @@ import {
   loadAdminStore,
   normalizeSiteContent,
   productTitle,
-  saveAdminStore,
   type AdminProduct,
   type AdminOrder,
   type AdminStore,
@@ -44,6 +43,12 @@ import {
   type Supplier,
   type Ticket,
 } from "@/lib/adminStore";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/contexts/AuthContext";
+import AdminCommerce, { type CommerceTab } from "./AdminCommerce";
+import AdminProducts from "./AdminProducts";
+import AdminProductDetails from "./AdminProductDetails";
 import { loadRemoteAdminStore, saveRemoteAdminStore } from "@/lib/remoteAdminStore";
 
 const menu = [
@@ -75,7 +80,23 @@ const sidebarGroups = [
   { id: "spu-config", label: "SPU配置", icon: Settings, hint: "商品主体资料" },
   { id: "sku-config", label: "SKU配置", icon: SlidersHorizontal, hint: "价格 / 库存 / 标签" },
   { id: "service-config", label: "服务配置", icon: SlidersHorizontal, hint: "首页文案 / 站点设置" },
+  { id: "admins", label: "管理员管理", icon: ShieldCheck, hint: "原运营人员管理" },
+  { id: "payments", label: "支付与退款", icon: CircleDollarSign, hint: "Stripe / 钱包 / 退款对账" },
 ] as const;
+
+type WorkspaceView = { id: string; label: string; commerce?: CommerceTab; editor?: "details" | "catalog"; legacy?: string; description?: string };
+const workspaceViews: Record<string, WorkspaceView[]> = {
+  dashboard: [{ id: "legacy", label: "运营数据看板" }, { id: "commerce", label: "商城交易概览", commerce: "overview" }],
+  orders: [{ id: "legacy", label: "人工订单记录", description: "保留原订单录入、审核和交付记录；线上付款、发货及原路退款请在「商城订单与交付」处理。" }, { id: "commerce", label: "商城订单与交付", commerce: "orders" }],
+  "ticket-management": [{ id: "legacy", label: "客服工单记录" }, { id: "commerce", label: "商城售后与投诉", commerce: "support" }],
+  "vehicle-management": [{ id: "legacy", label: "车辆与车位", description: "保留车辆、车位和原账号资料；用于商城自动发货的有效卡密在「商城卡密与自动发货」中管理。" }, { id: "accounts", label: "库存账号池", legacy: "inventory" }, { id: "commerce", label: "商城卡密与自动发货", commerce: "inventory" }],
+  "recharge-records": [{ id: "legacy", label: "代充值交付记录", description: "代充值记录用于管理向客户交付的充值服务；客户给商城钱包充值的记录见右侧流水。" }, { id: "commerce", label: "钱包充值与退款流水", commerce: "payments" }],
+  "ticket-vouchers": [{ id: "legacy", label: "车票与凭证", description: "原车票的交付和退款按钮维护人工处理记录；商城交易请切换到「商城订单交付」办理。" }, { id: "commerce", label: "商城订单交付", commerce: "orders" }],
+  "spu-config": [{ id: "legacy", label: "SPU 主体资料" }, { id: "details", label: "详情页与订阅模板", editor: "details" }],
+  "sku-config": [{ id: "legacy", label: "SKU 定价配置", description: "商品资料与商城双向同步。原库存数量保留为供货记录；商城可售数量由已导入的有效卡密计算。" }, { id: "products", label: "商品与定价", legacy: "products" }, { id: "catalog", label: "商品完整编辑器", editor: "catalog" }, { id: "commerce", label: "自动交付与售后规则", commerce: "products" }],
+  payments: [{ id: "commerce", label: "支付与退款", commerce: "payments" }],
+};
+const commerceDestinations: Record<CommerceTab, string> = { overview: "dashboard", orders: "orders", inventory: "vehicle-management", products: "sku-config", support: "ticket-management", payments: "payments" };
 
 const statusText: Record<string, string> = {
   enabled: "上架",
@@ -240,8 +261,28 @@ const productToForm = (product?: AdminProduct): ProductFormState => ({
 });
 
 export default function Admin() {
+  const { user } = useAuth();
+  const userId = user?.id;
   const [store, setStore] = useState<AdminStore>(() => loadAdminStore());
-  const [active, setActive] = useState("dashboard");
+  const [params] = useSearchParams();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const routeDefaults: Record<string, [string, string]> = { "/admin/content": ["service-config", "legacy"], "/admin/products": ["spu-config", "details"], "/admin/skus": ["sku-config", "catalog"] };
+  const [defaultSection, defaultView] = routeDefaults[location.pathname] ?? ["dashboard", "legacy"];
+  const requestedSection = params.get("section") ?? defaultSection;
+  const active = sidebarGroups.some(item => item.id === requestedSection) ? requestedSection : "dashboard";
+  const views = workspaceViews[active] ?? [{ id: "legacy", label: sidebarGroups.find(item => item.id === active)?.label ?? "管理" }];
+  const view = views.find(item => item.id === (params.get("view") ?? defaultView)) ?? views[0];
+  const setActive = (section: string, selectedView = "legacy") => navigate(`/admin?section=${encodeURIComponent(section)}&view=${encodeURIComponent(selectedView)}`);
+  const [remoteReady, setRemoteReady] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [refreshVersion, setRefreshVersion] = useState(0);
+  const baseline = useRef<AdminStore | null>(null);
+  const pendingStore = useRef<AdminStore | null>(null);
+  const saving = useRef(false);
+  const generation = useRef(0);
+  const readSequence = useRef(0);
   const [query, setQuery] = useState("");
   const [inventoryQuery, setInventoryQuery] = useState("");
   const [inventoryProductFilter, setInventoryProductFilter] = useState("all");
@@ -254,7 +295,7 @@ export default function Admin() {
   const [userQuery, setUserQuery] = useState("");
   const [userLevelFilter, setUserLevelFilter] = useState("all");
   const [userStatusFilter, setUserStatusFilter] = useState("all");
-  const [notice, setNotice] = useState("后台已连接前台数据");
+  const [notice, setNotice] = useState("正在读取原后台数据…");
   const [productForm, setProductForm] = useState<ProductFormState | null>(null);
   const [inventoryForm, setInventoryForm] = useState<InventoryFormState | null>(null);
   const [orderForm, setOrderForm] = useState<OrderFormState | null>(null);
@@ -266,39 +307,66 @@ export default function Admin() {
   const [levelForm, setLevelForm] = useState<LevelFormState | null>(null);
   const [actionForm, setActionForm] = useState<ActionFormState | null>(null);
 
-  const commit = (next: AdminStore, message: string) => {
-    const saved = saveAdminStore(next);
-    setStore(saved);
-    setNotice(`${message}，正在同步数据库...`);
-    saveRemoteAdminStore(saved).then((result) => {
-      setNotice(result.ok ? `${message}，数据库已同步，前台会自动更新` : `${message}，本地已保存，数据库未同步：${result.error}`);
-    });
-  };
-
-  const syncCurrentStore = () => {
-    const saved = saveAdminStore(store);
-    setStore(saved);
-    setNotice("正在把当前后台数据同步到 Supabase 数据库...");
-    saveRemoteAdminStore(saved).then((result) => {
-      setNotice(result.ok ? "当前后台数据已同步到数据库，前台会自动更新" : `数据库同步失败：${result.error}`);
-    });
-  };
-
-  useEffect(() => {
-    let alive = true;
-    loadRemoteAdminStore().then((result) => {
-      if (!alive) return;
-      if (result.ok && result.store) {
-        setStore(result.store);
-        setNotice("已从 Supabase 数据库加载后台数据");
-      } else {
-        setNotice(`当前使用本地数据；数据库同步待完成：${result.error}`);
+  const flush = async () => {
+    if (saving.current || !baseline.current || !pendingStore.current) return;
+    saving.current = true; setSyncing(true);
+    const ownGeneration = generation.current;
+    try {
+      while (pendingStore.current && generation.current === ownGeneration) {
+        const next = pendingStore.current;
+        pendingStore.current = null;
+        const result = await saveRemoteAdminStore(next, baseline.current!);
+        if (generation.current !== ownGeneration) return;
+        if (!result.ok) {
+          pendingStore.current ??= next;
+          setNotice(`有改动未同步，请重试：${"error" in result ? result.error : "未知错误"}`);
+          return;
+        }
+        baseline.current = next;
+        void queryClient.invalidateQueries({ queryKey: ["commerce-catalog"] });
       }
-    });
-    return () => {
-      alive = false;
-    };
+      setNotice("改动已保存到数据库，商品资料已同步到商城");
+    } finally {
+      if (generation.current === ownGeneration) { saving.current = false; setSyncing(false); }
+    }
+  };
+  const commit = (next: AdminStore, message: string) => {
+    if (!baseline.current) { setNotice("请先成功读取数据库后再保存"); return; }
+    const saved = { ...next, updatedAt: new Date().toISOString() };
+    setStore(saved);
+    pendingStore.current = saved;
+    setNotice(`${message}，正在保存改动…`);
+    void flush();
+  };
+  const syncCurrentStore = () => {
+    if (pendingStore.current) void flush();
+    else setNotice("所有改动均已同步，无需重复上传");
+  };
+  const reloadWorkspace = useCallback(async () => {
+    if (saving.current || pendingStore.current) return;
+    const ownGeneration = generation.current;
+    const sequence = ++readSequence.current;
+    const result = await loadRemoteAdminStore();
+    if (generation.current !== ownGeneration || sequence !== readSequence.current || saving.current || pendingStore.current) return;
+    if (result.ok && result.store) {
+      baseline.current = result.store; setStore(result.store); setRemoteReady(true);
+      setNotice("已加载原后台数据 · 商品与商城同步");
+    } else {
+      setNotice(`后台数据读取失败，请点击刷新后台重试：${"error" in result ? result.error : "未知错误"}`);
+    }
   }, []);
+  useEffect(() => {
+    generation.current++; baseline.current = null; pendingStore.current = null;
+    saving.current = false; setSyncing(false); setRemoteReady(false);
+    void reloadWorkspace();
+    const guard = generation;
+    return () => { guard.current++; };
+  }, [userId, reloadWorkspace]);
+  useEffect(() => { if (view.id === "legacy" || view.legacy) void reloadWorkspace(); }, [active, view.id, view.legacy, reloadWorkspace]);
+  const refreshWorkspace = () => {
+    if (saving.current || pendingStore.current) { setNotice("请先完成未同步改动的保存，再刷新数据"); return; }
+    void reloadWorkspace(); setRefreshVersion(version => version + 1);
+  };
 
   const metrics = useMemo(() => {
     const revenue = store.orders.reduce((sum, order) => order.status !== "refund" ? sum + order.amount : sum, 0);
@@ -650,7 +718,7 @@ export default function Admin() {
           ? store.products.map((item) => item.id === product?.id ? { ...item, stock: (item.stock ?? 0) + supplier.stock, cost: supplier.price } : item)
           : store.products,
       };
-      message = actionForm.kind === "supplier-approve" ? "供应商已通过，库存已同步到前台" : "供应商已驳回";
+      message = actionForm.kind === "supplier-approve" ? "供应商已通过，供货数量及成本已更新" : "供应商已驳回";
     }
     if (actionForm.kind === "customer-status" || actionForm.kind === "customer-risk") {
       nextStore = {
@@ -771,10 +839,10 @@ export default function Admin() {
   const renderDashboard = () => (
     <div className="space-y-6">
       <div className="grid gap-4 md:grid-cols-4">
-        <StatCard title="今日成交额" value={`$${metrics.revenue.toFixed(2)}`} sub="订单收入实时汇总" icon={CircleDollarSign} />
+        <StatCard title="人工订单成交额" value={`$${metrics.revenue.toFixed(2)}`} sub="原后台录入的未退款订单汇总" icon={CircleDollarSign} />
         <StatCard title="待交付订单" value={String(metrics.pendingOrders)} sub="需要客服或系统处理" icon={Truck} />
-        <StatCard title="总库存" value={String(metrics.stock)} sub="前台只展示上架商品" icon={PackageCheck} />
-        <StatCard title="预估利润" value={`$${metrics.profit.toFixed(2)}`} sub="演示版按成本估算" icon={Activity} />
+        <StatCard title="供货库存" value={String(metrics.stock)} sub="商城可售库存见交易概览" icon={PackageCheck} />
+        <StatCard title="预估利润" value={`$${metrics.profit.toFixed(2)}`} sub="按原供货记录估算" icon={Activity} />
       </div>
       <section className="rounded-lg border border-orange-100 bg-white p-5 shadow-sm">
         <h2 className="text-lg font-black text-slate-950">运营提醒</h2>
@@ -1974,7 +2042,7 @@ export default function Admin() {
     </div>
   ) : null;
 
-  const content = {
+  const legacyContent = {
     dashboard: renderDashboard,
     products: renderProducts,
     "ip-pricing": renderIpPricing,
@@ -1997,7 +2065,7 @@ export default function Admin() {
     "spu-config": renderSpuConfig,
     "sku-config": renderSkuConfig,
     "service-config": renderSettings,
-  }[active] ?? renderDashboard;
+  }[view.legacy ?? active] ?? renderDashboard;
 
   return (
     <div className="min-h-screen bg-[#fff7ed] text-slate-900">
@@ -2046,11 +2114,11 @@ export default function Admin() {
         <main className="min-w-0 flex-1">
           <header className="sticky top-0 z-20 border-b border-orange-100 bg-white/90 px-4 py-4 backdrop-blur md:px-8">
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <div><h1 className="text-2xl font-black">{sidebarGroups.find((item) => item.id === active)?.label ?? menu.find((item) => item.id === active)?.label}</h1><p className="text-sm text-slate-500">前后台联动演示 · 最后更新 {new Date(store.updatedAt).toLocaleString()}</p></div>
+              <div><h1 className="text-2xl font-black">{sidebarGroups.find((item) => item.id === active)?.label ?? menu.find((item) => item.id === active)?.label}</h1><p className="text-sm text-slate-500">运营管理与商城交易 · 最后更新 {new Date(store.updatedAt).toLocaleString()}</p></div>
               <div className="flex items-center gap-2">
                 <a href={import.meta.env.BASE_URL || "/"} className="rounded-lg border border-orange-200 px-3 py-2 text-sm font-bold text-orange-700 hover:bg-orange-50">打开前台</a>
-                <button onClick={syncCurrentStore} className="rounded-lg border border-orange-200 px-3 py-2 text-sm font-bold text-orange-700 hover:bg-orange-50">同步数据库</button>
-                <button onClick={() => commit(loadAdminStore(), "数据已刷新")} className="rounded-lg bg-slate-950 px-3 py-2 text-sm font-bold text-white">刷新后台</button>
+                <button onClick={syncCurrentStore} disabled={syncing || !remoteReady} className="rounded-lg border border-orange-200 px-3 py-2 text-sm font-bold text-orange-700 hover:bg-orange-50">同步数据库</button>
+                <button onClick={refreshWorkspace} disabled={syncing} className="rounded-lg bg-slate-950 px-3 py-2 text-sm font-bold text-white">刷新后台</button>
               </div>
             </div>
             <div className="mt-4 flex gap-2 overflow-x-auto lg:hidden">
@@ -2063,7 +2131,15 @@ export default function Admin() {
               {notice.includes("驳回") || notice.includes("禁用") ? <XCircle className="h-4 w-4 text-rose-500" /> : <CheckCircle2 className="h-4 w-4 text-emerald-500" />}
               {notice}
             </div>
-            {content()}
+            {views.length > 1 && <div role="tablist" aria-label={`${sidebarGroups.find(item => item.id === active)?.label}功能`} className="mb-5 flex gap-2 overflow-x-auto rounded-lg border border-orange-100 bg-white p-2">
+              {views.map(item => <button key={item.id} role="tab" aria-selected={view.id === item.id} onClick={() => setActive(active, item.id)} className={`shrink-0 rounded-md px-4 py-2.5 text-sm font-bold ${view.id === item.id ? "bg-orange-600 text-white" : "text-slate-600 hover:bg-orange-50"}`}>{item.label}</button>)}
+            </div>}
+            {view.description && <p className="mb-4 text-sm leading-6 text-slate-500">{view.description}</p>}
+            {view.commerce ? <AdminCommerce key={`${active}-${view.id}-${refreshVersion}`} embedded initialTab={view.commerce} lowStockAlert={store.settings.lowStockAlert} onNavigate={tab => setActive(commerceDestinations[tab], "commerce")} />
+              : view.editor === "details" ? <AdminProductDetails embedded />
+              : view.editor === "catalog" ? <AdminProducts embedded />
+              : remoteReady ? legacyContent()
+              : <div role="status" className="rounded-lg border border-orange-100 bg-white p-8 text-center text-slate-500">{notice.includes("失败") ? "数据尚未读取成功，请点击刷新后台重试。" : "正在加载后台记录…"}</div>}
           </div>
         </main>
       </div>

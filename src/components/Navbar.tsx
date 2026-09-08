@@ -8,6 +8,7 @@ import LanguageSwitcher from "./LanguageSwitcher";
 import AuthModal from "./AuthModal";
 import SearchDropdown from "./SearchDropdown";
 import { useAuth } from "@/contexts/AuthContext";
+import { useCart } from "@/lib/cart";
 import { useSiteContent } from "@/hooks/useSiteContent";
 import {
   DropdownMenu,
@@ -21,6 +22,7 @@ import {
 export default function Navbar() {
   const { t } = useTranslation();
   const content = useSiteContent();
+  const cartCount = useCart().reduce((count, line) => count + line.quantity, 0);
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const location = useLocation();
@@ -114,10 +116,10 @@ export default function Navbar() {
 
           <div className="flex items-center gap-2">
             <LanguageSwitcher />
-            <Button variant="ghost" size="icon" className="rounded-full relative">
+            <Button variant="ghost" size="icon" className="rounded-full relative" aria-label={`购物车，${cartCount} 件商品`} onClick={() => navigate("/cart")}>
               <ShoppingCart className="w-5 h-5" />
               <span className="absolute -top-1 -right-1 w-4 h-4 bg-primary text-primary-foreground text-xs rounded-full flex items-center justify-center">
-                0
+                {cartCount}
               </span>
             </Button>
 
@@ -140,25 +142,22 @@ export default function Navbar() {
                   <DropdownMenuLabel className="font-normal px-2 pt-1 pb-3">
                     <div className="text-sm font-semibold truncate" dir="ltr">{user.email}</div>
                     <div className="text-xs text-muted-foreground mt-0.5">{t("userMenu.personalInfo")}</div>
-                    <div className="mt-3 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-xs px-3 py-2 flex items-center justify-between">
-                      <span>{t("userMenu.savedThrough")}</span>
-                      <span className="font-bold">$0.00</span>
-                    </div>
+
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => navigate("/profile")}>
                     <UserCircle className="w-4 h-4 mr-2" />
                     {t("userMenu.personalInfo")}
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate("/profile")}>
+                  <DropdownMenuItem onClick={() => navigate("/wallet")}>
                     <Wallet className="w-4 h-4 mr-2" />
-                    {t("userMenu.credits")} <span className="ml-auto text-xs text-muted-foreground">$0.00</span>
+                    钱包与充值
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => navigate("/orders")}>
                     <CreditCard className="w-4 h-4 mr-2" />
                     {t("userMenu.mySubscription")}
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate("/page/contact-us")}>
+                  <DropdownMenuItem onClick={() => navigate("/support")}>
                     <Headphones className="w-4 h-4 mr-2" />
                     {t("userMenu.support")}
                   </DropdownMenuItem>

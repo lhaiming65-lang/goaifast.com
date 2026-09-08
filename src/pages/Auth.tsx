@@ -1,5 +1,10 @@
 import { useEffect } from "react";
-import { Link, useNavigate, useSearchParams, useLocation } from "react-router-dom";
+import {
+  Link,
+  useNavigate,
+  useSearchParams,
+  useLocation,
+} from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { ArrowLeft } from "lucide-react";
 import AuthForm from "@/components/AuthForm";
@@ -11,18 +16,29 @@ export default function AuthPage() {
   const location = useLocation();
   const { user, loading } = useAuth();
   const [params] = useSearchParams();
-  const mode = params.get("mode") === "signup" ? "signup" : "signin";
-  const nextParam = params.get("next");
+  const mode =
+    params.get("mode") === "signup"
+      ? "signup"
+      : params.get("mode") === "forgot"
+        ? "forgot"
+        : "signin";
+  const candidate =
+    params.get("next") || (location.state as { from?: string } | null)?.from;
+  // Validate both URL params and navigation state; backslashes normalize to slashes in URLs.
   const safeNext =
-    nextParam && nextParam.startsWith("/") && !nextParam.startsWith("//") ? nextParam : null;
-  const from = safeNext || (location.state as { from?: string } | null)?.from || "/";
+    typeof candidate === "string" &&
+    candidate.startsWith("/") &&
+    !candidate.startsWith("//") &&
+    !candidate.includes("\\") &&
+    !/^\/auth(?:[/?#]|$)/.test(candidate)
+      ? candidate
+      : "/profile";
 
   useEffect(() => {
     if (!loading && user) {
-      if (safeNext) window.location.href = safeNext;
-      else navigate(from, { replace: true });
+      navigate(safeNext, { replace: true });
     }
-  }, [user, loading, navigate, from, safeNext]);
+  }, [user, loading, navigate, safeNext]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-secondary/30 to-background flex flex-col">
@@ -48,7 +64,7 @@ export default function AuthPage() {
               </span>
             </Link>
           </div>
-          <AuthForm initialMode={mode} />
+          <AuthForm initialMode={mode} redirectTo={safeNext} />
         </div>
       </main>
     </div>

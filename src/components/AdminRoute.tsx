@@ -1,5 +1,5 @@
 import { ReactNode } from "react";
-import { Navigate, useLocation } from "react-router-dom";
+import { Link, Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIsAdmin } from "@/hooks/useProductContent";
 
@@ -10,7 +10,7 @@ export default function AdminRoute({ children }: { children: ReactNode }) {
 
   if (loading || checking) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" role="status" aria-label="正在验证管理权限">
         <div className="w-10 h-10 rounded-full border-4 border-primary/20 border-t-primary animate-spin" />
       </div>
     );
@@ -25,6 +25,7 @@ export default function AdminRoute({ children }: { children: ReactNode }) {
       <div className="min-h-screen flex flex-col items-center justify-center gap-3 px-6 text-center">
         <h1 className="text-2xl font-bold text-foreground">无权限访问</h1>
         <p className="text-muted-foreground text-sm">该页面仅限管理员使用。</p>
+        <Link to="/" className="mt-3 rounded-xl bg-primary px-5 py-3 text-sm font-medium text-primary-foreground">返回商城</Link>
       </div>
     );
   }
