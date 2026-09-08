@@ -64,17 +64,17 @@ const sidebarGroups = [
   { id: "dashboard", label: "欢迎页", icon: LayoutDashboard, hint: "首页数据" },
   { id: "users", label: "用户管理", icon: SlidersHorizontal, hint: "用户资料 / 等级 / 风控" },
   { id: "orders", label: "订单管理", icon: SlidersHorizontal, hint: "订单审核 / 发货" },
-  { id: "tickets", label: "工单管理", icon: SlidersHorizontal, hint: "售后客服工单" },
-  { id: "suppliers", label: "供应管理", icon: SlidersHorizontal, hint: "供应审核 / 规则" },
-  { id: "suppliers", label: "供应商管理", icon: SlidersHorizontal, hint: "供应商资料" },
-  { id: "inventory", label: "车辆管理", icon: SlidersHorizontal, hint: "车位 / 账号池" },
-  { id: "inventory", label: "代充值记录管理", icon: SlidersHorizontal, hint: "充值交付记录" },
-  { id: "orders", label: "车票管理", icon: SlidersHorizontal, hint: "凭证 / 卡密订单" },
-  { id: "ip-pricing", label: "营销管理", icon: SlidersHorizontal, hint: "IP 定价 / 活动" },
-  { id: "analytics", label: "线索管理", icon: SlidersHorizontal, hint: "访客行为明细" },
-  { id: "products", label: "SPU配置", icon: Settings, hint: "商品主体资料" },
-  { id: "products", label: "SKU配置", icon: SlidersHorizontal, hint: "价格 / 库存 / 标签" },
-  { id: "settings", label: "服务配置", icon: SlidersHorizontal, hint: "首页文案 / 站点设置" },
+  { id: "ticket-management", label: "工单管理", icon: SlidersHorizontal, hint: "售后客服工单" },
+  { id: "supply-management", label: "供应管理", icon: SlidersHorizontal, hint: "供应审核 / 规则" },
+  { id: "supplier-management", label: "供应商管理", icon: SlidersHorizontal, hint: "供应商资料" },
+  { id: "vehicle-management", label: "车辆管理", icon: SlidersHorizontal, hint: "车位 / 账号池" },
+  { id: "recharge-records", label: "代充值记录管理", icon: SlidersHorizontal, hint: "充值交付记录" },
+  { id: "ticket-vouchers", label: "车票管理", icon: SlidersHorizontal, hint: "凭证 / 卡密订单" },
+  { id: "marketing", label: "营销管理", icon: SlidersHorizontal, hint: "IP 定价 / 活动" },
+  { id: "leads", label: "线索管理", icon: SlidersHorizontal, hint: "访客行为明细" },
+  { id: "spu-config", label: "SPU配置", icon: Settings, hint: "商品主体资料" },
+  { id: "sku-config", label: "SKU配置", icon: SlidersHorizontal, hint: "价格 / 库存 / 标签" },
+  { id: "service-config", label: "服务配置", icon: SlidersHorizontal, hint: "首页文案 / 站点设置" },
 ] as const;
 
 const statusText: Record<string, string> = {
@@ -1047,6 +1047,216 @@ export default function Admin() {
     </section>
   );
 
+  const renderSupplierManagement = () => (
+    <section className="rounded-lg border border-orange-100 bg-white shadow-sm">
+      <div className="flex items-center justify-between border-b border-orange-100 p-5">
+        <div>
+          <h2 className="text-lg font-black text-slate-950">供应商管理</h2>
+          <p className="text-sm text-slate-500">管理供应商档案、供货商品、成本、库存和审核状态。</p>
+        </div>
+        <button onClick={() => openSupplierModal()} className="inline-flex items-center gap-2 rounded-lg bg-orange-600 px-3 py-2 text-sm font-bold text-white"><Plus className="h-4 w-4" /> 新增供应商</button>
+      </div>
+      <div className="grid gap-4 p-5 xl:grid-cols-3">
+        {store.suppliers.map((supplier) => (
+          <div key={supplier.id} className="rounded-lg border border-slate-100 p-4 hover:border-orange-200 hover:shadow-sm">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-base font-black text-slate-950">{supplier.name}</p>
+                <p className="mt-1 text-sm text-slate-500">{supplier.id} · {supplier.productName}</p>
+              </div>
+              <Badge status={supplier.status} />
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+              <div className="rounded-lg bg-orange-50 p-3"><p className="text-xs text-orange-700">供货成本</p><p className="font-black">${supplier.price.toFixed(2)}</p></div>
+              <div className="rounded-lg bg-sky-50 p-3"><p className="text-xs text-sky-700">可供库存</p><p className="font-black">{supplier.stock}</p></div>
+            </div>
+            <p className="mt-3 text-xs text-slate-500">提交时间：{supplier.submittedAt}</p>
+            <div className="mt-4 flex flex-wrap gap-3 text-sm font-bold text-orange-700">
+              <button onClick={() => openSupplierModal(supplier)}>编辑档案</button>
+              <button onClick={() => openActionModal({ kind: "supplier-approve", targetId: supplier.id, title: "通过供应商审核", targetName: `${supplier.name} · ${supplier.productName}`, currentState: statusText[supplier.status] ?? supplier.status, nextState: "已通过", rule: "通过后会把供应商库存加入对应商品库存，并更新商品成本。", impact: `将增加 ${supplier.stock} 个库存，成本价更新为 $${supplier.price.toFixed(2)}。` })}>通过</button>
+              <button onClick={() => openActionModal({ kind: "supplier-reject", targetId: supplier.id, title: "驳回供应商审核", targetName: `${supplier.name} · ${supplier.productName}`, currentState: statusText[supplier.status] ?? supplier.status, nextState: "已驳回", rule: "驳回后不会导入库存，也不会影响前台商品。", impact: "适用于报价异常、库存不稳定、资料不完整等情况。" })}>驳回</button>
+              <button onClick={() => commit({ ...store, suppliers: store.suppliers.filter((s) => s.id !== supplier.id) }, "供应商已删除")}>删除</button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+
+  const renderVehicleManagement = () => (
+    <section className="rounded-lg border border-orange-100 bg-white shadow-sm">
+      <div className="flex items-center justify-between border-b border-orange-100 p-5">
+        <div>
+          <h2 className="text-lg font-black text-slate-950">车辆管理</h2>
+          <p className="text-sm text-slate-500">按车位/车辆 ID 管理共享账号席位，适合多人订阅、家庭组和授权位交付。</p>
+        </div>
+        <button onClick={() => openInventoryModal()} className="inline-flex items-center gap-2 rounded-lg bg-orange-600 px-3 py-2 text-sm font-bold text-white"><Plus className="h-4 w-4" /> 新增车辆</button>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[1080px] text-left text-sm">
+          <thead className="bg-orange-50 text-slate-600"><tr><th className="p-4">车辆ID</th><th>库存编号</th><th>商品</th><th>账号</th><th>购买客户</th><th>订单号</th><th>到期</th><th>状态</th><th>操作</th></tr></thead>
+          <tbody className="divide-y divide-slate-100">
+            {store.inventory.map((item) => (
+              <tr key={item.id}>
+                <td className="p-4 font-black">{item.vehicleId || "未设置"}</td>
+                <td>{item.id}</td>
+                <td>{productTitle(store, item.productId)}</td>
+                <td>{item.account}</td>
+                <td>{item.assignedCustomer || "未分配"}</td>
+                <td>{item.orderId || "-"}</td>
+                <td>{item.expireAt}</td>
+                <td><Badge status={item.status} /></td>
+                <td className="space-x-3 font-bold text-orange-700">
+                  <button onClick={() => openInventoryModal(item)}>编辑</button>
+                  <button onClick={() => openActionModal({ kind: "inventory-release", targetId: item.id, title: "释放车辆席位", targetName: `${item.vehicleId || item.id} · ${productTitle(store, item.productId)}`, currentState: statusText[item.status] ?? item.status, nextState: "可交付", rule: "释放后该席位可重新分配给新订单。", impact: "适合客户到期、换绑或补发后的席位回收。" })}>释放</button>
+                  <button onClick={() => openActionModal({ kind: "inventory-ban", targetId: item.id, title: "禁用车辆席位", targetName: `${item.vehicleId || item.id} · ${productTitle(store, item.productId)}`, currentState: statusText[item.status] ?? item.status, nextState: "禁用", rule: "禁用后该席位不会进入自动交付。", impact: "适用于账号异常、席位失效、供应商争议。" })}>禁用</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+
+  const renderRechargeRecords = () => (
+    <section className="rounded-lg border border-orange-100 bg-white shadow-sm">
+      <div className="flex items-center justify-between border-b border-orange-100 p-5">
+        <div>
+          <h2 className="text-lg font-black text-slate-950">代充值记录管理</h2>
+          <p className="text-sm text-slate-500">记录代充值类订单的账号、客户、订单、创建时间、到期和交付状态。</p>
+        </div>
+        <button onClick={() => openInventoryModal()} className="inline-flex items-center gap-2 rounded-lg bg-orange-600 px-3 py-2 text-sm font-bold text-white"><Plus className="h-4 w-4" /> 新增记录</button>
+      </div>
+      <div className="grid gap-4 p-5 md:grid-cols-4">
+        <div className="rounded-lg bg-orange-50 p-4"><p className="text-xs font-bold text-orange-700">全部记录</p><p className="mt-1 text-2xl font-black">{store.inventory.length}</p></div>
+        <div className="rounded-lg bg-emerald-50 p-4"><p className="text-xs font-bold text-emerald-700">可交付</p><p className="mt-1 text-2xl font-black">{store.inventory.filter((item) => item.status === "available").length}</p></div>
+        <div className="rounded-lg bg-amber-50 p-4"><p className="text-xs font-bold text-amber-700">锁定中</p><p className="mt-1 text-2xl font-black">{store.inventory.filter((item) => item.status === "locked").length}</p></div>
+        <div className="rounded-lg bg-rose-50 p-4"><p className="text-xs font-bold text-rose-700">异常禁用</p><p className="mt-1 text-2xl font-black">{store.inventory.filter((item) => item.status === "banned").length}</p></div>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[1180px] text-left text-sm">
+          <thead className="bg-orange-50 text-slate-600"><tr><th className="p-4">记录编号</th><th>商品</th><th>充值账号</th><th>密码/卡密</th><th>客户</th><th>订单号</th><th>创建时间</th><th>到期</th><th>状态</th><th>操作</th></tr></thead>
+          <tbody className="divide-y divide-slate-100">
+            {store.inventory.map((item) => (
+              <tr key={item.id}>
+                <td className="p-4 font-black">{item.id}</td>
+                <td>{productTitle(store, item.productId)}</td>
+                <td>{item.account}</td>
+                <td>{item.password || "-"}</td>
+                <td>{item.assignedCustomer || "未分配"}</td>
+                <td>{item.orderId || "-"}</td>
+                <td>{item.createdAt || "-"}</td>
+                <td>{item.expireAt}</td>
+                <td><Badge status={item.status} /></td>
+                <td className="space-x-3 font-bold text-orange-700"><button onClick={() => openInventoryModal(item)}>编辑</button><button onClick={() => openActionModal({ kind: "inventory-release", targetId: item.id, title: "标记可交付", targetName: `${item.id} · ${item.account}`, currentState: statusText[item.status] ?? item.status, nextState: "可交付", rule: "记录会进入可交付状态。", impact: "客服可按此状态继续处理交付。" })}>可交付</button><button onClick={() => openActionModal({ kind: "inventory-ban", targetId: item.id, title: "标记异常", targetName: `${item.id} · ${item.account}`, currentState: statusText[item.status] ?? item.status, nextState: "禁用", rule: "异常记录不会进入自动交付。", impact: "适合充值失败、账号错误或供应异常。" })}>异常</button></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+
+  const renderTicketVouchers = () => (
+    <section className="rounded-lg border border-orange-100 bg-white shadow-sm">
+      <div className="flex items-center justify-between border-b border-orange-100 p-5">
+        <div>
+          <h2 className="text-lg font-black text-slate-950">车票管理</h2>
+          <p className="text-sm text-slate-500">管理订单凭证、卡密票据、车位票和需要人工核对的交付凭证。</p>
+        </div>
+        <button onClick={() => openOrderModal()} className="inline-flex items-center gap-2 rounded-lg bg-orange-600 px-3 py-2 text-sm font-bold text-white"><Plus className="h-4 w-4" /> 新增票据</button>
+      </div>
+      <div className="grid gap-4 p-5 xl:grid-cols-2">
+        {store.orders.map((order) => {
+          const account = store.inventory.find((item) => item.orderId === order.id);
+          return (
+            <div key={order.id} className="rounded-lg border border-slate-100 p-4 hover:border-orange-200 hover:shadow-sm">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-base font-black text-slate-950">{order.id}</p>
+                  <p className="mt-1 text-sm text-slate-500">{productTitle(store, order.productId)} · {order.customer}</p>
+                </div>
+                <Badge status={order.status} />
+              </div>
+              <div className="mt-4 grid gap-3 text-sm md:grid-cols-3">
+                <div><p className="text-xs text-slate-400">金额</p><p className="font-black">${order.amount.toFixed(2)}</p></div>
+                <div><p className="text-xs text-slate-400">提交时间</p><p className="font-black">{order.createdAt}</p></div>
+                <div><p className="text-xs text-slate-400">绑定车辆</p><p className="font-black">{account?.vehicleId || "未绑定"}</p></div>
+              </div>
+              <p className="mt-3 rounded-lg bg-slate-50 p-3 text-xs text-slate-500">凭证账号：{account?.account || "暂无"} {account?.password ? ` / ${account.password}` : ""}</p>
+              <div className="mt-4 flex flex-wrap gap-3 text-sm font-bold text-orange-700">
+                <button onClick={() => openOrderModal(order)}>编辑票据</button>
+                <button onClick={() => openActionModal({ kind: "order-deliver", targetId: order.id, title: "确认票据已交付", targetName: `${order.id} · ${productTitle(store, order.productId)}`, currentState: statusText[order.status] ?? order.status, nextState: "已交付", rule: "确认后订单会进入已交付状态。", impact: "客户售后和订单查询会按已交付状态处理。" })}>确认交付</button>
+                <button onClick={() => openActionModal({ kind: "order-refund", targetId: order.id, title: "票据退款", targetName: `${order.id} · ${order.customer}`, currentState: statusText[order.status] ?? order.status, nextState: "已退款", rule: "退款后订单收入不再计入成交额。", impact: "会生成一条售后工单便于追踪。" })}>退款</button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+
+  const renderSpuConfig = () => (
+    <section className="rounded-lg border border-orange-100 bg-white shadow-sm">
+      <div className="flex items-center justify-between border-b border-orange-100 p-5">
+        <div>
+          <h2 className="text-lg font-black text-slate-950">SPU配置</h2>
+          <p className="text-sm text-slate-500">维护商品主体资料：名称、分类、图片、详情介绍和交付说明。</p>
+        </div>
+        <button onClick={() => openProductModal()} className="inline-flex items-center gap-2 rounded-lg bg-orange-600 px-3 py-2 text-sm font-bold text-white"><Plus className="h-4 w-4" /> 新增 SPU</button>
+      </div>
+      <div className="grid gap-4 p-5 xl:grid-cols-2">
+        {store.products.map((product) => (
+          <div key={product.id} className="flex gap-4 rounded-lg border border-slate-100 p-4 hover:border-orange-200 hover:shadow-sm">
+            {product.imageUrl ? <img src={product.imageUrl} alt={product.titleKey} className="h-20 w-20 rounded-lg object-cover" /> : <div className={`flex h-20 w-20 shrink-0 items-center justify-center rounded-lg text-xl font-black text-white ${product.color}`}>{product.titleKey.charAt(0)}</div>}
+            <div className="min-w-0 flex-1">
+              <div className="flex items-start justify-between gap-3">
+                <div><p className="truncate text-base font-black text-slate-950">{product.titleKey}</p><p className="text-sm text-slate-500">{categoryOptions.find((cat) => cat.id === product.category)?.labelZh ?? product.category}</p></div>
+                <Badge status={product.status} />
+              </div>
+              <p className="mt-2 line-clamp-2 text-sm text-slate-500">{product.description || product.subtitle || "还没有填写商品介绍"}</p>
+              <div className="mt-3 flex flex-wrap gap-3 text-sm font-bold text-orange-700"><button onClick={() => openProductModal(product)}>编辑主体资料</button><button onClick={() => updateProduct(product.id, { status: product.status === "enabled" ? "disabled" : "enabled" }, "商品上下架已同步到前台")}>{product.status === "enabled" ? "下架" : "上架"}</button></div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+
+  const renderSkuConfig = () => (
+    <section className="rounded-lg border border-orange-100 bg-white shadow-sm">
+      <div className="flex items-center justify-between border-b border-orange-100 p-5">
+        <div>
+          <h2 className="text-lg font-black text-slate-950">SKU配置</h2>
+          <p className="text-sm text-slate-500">维护具体销售项：售价、原价、成本、库存、标签和交付模式。</p>
+        </div>
+        <button onClick={() => openProductModal()} className="inline-flex items-center gap-2 rounded-lg bg-orange-600 px-3 py-2 text-sm font-bold text-white"><Plus className="h-4 w-4" /> 新增 SKU</button>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[1040px] text-left text-sm">
+          <thead className="bg-orange-50 text-slate-600"><tr><th className="p-4">SKU</th><th>分类</th><th>售价</th><th>原价</th><th>成本</th><th>毛利</th><th>库存</th><th>标签</th><th>交付</th><th>操作</th></tr></thead>
+          <tbody className="divide-y divide-slate-100">
+            {store.products.map((product) => (
+              <tr key={product.id}>
+                <td className="p-4 font-black">{product.id}</td>
+                <td>{categoryOptions.find((cat) => cat.id === product.category)?.labelZh ?? product.category}</td>
+                <td>${product.price.toFixed(2)}</td>
+                <td>${product.originalPrice.toFixed(2)}</td>
+                <td>${product.cost.toFixed(2)}</td>
+                <td>${Math.max(0, product.price - product.cost).toFixed(2)}</td>
+                <td>{product.stock ?? 0}</td>
+                <td>{product.badge || "无"}</td>
+                <td>{product.deliveryMode}</td>
+                <td className="space-x-3 font-bold text-orange-700"><button onClick={() => openProductModal(product)}>编辑</button><button onClick={() => updateProduct(product.id, { price: Math.round((product.price + 1) * 100) / 100 }, "SKU 价格已同步到前台")}>改价</button><button onClick={() => updateProduct(product.id, { stock: (product.stock ?? 0) + 5 }, "SKU 库存已同步到前台")}>补库存</button><button onClick={() => updateProduct(product.id, { badge: cycleBadge(product.badge) }, "SKU 标签已同步到前台")}>换标签</button></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+
   const renderUsers = () => (
     <section className="rounded-lg border border-orange-100 bg-white shadow-sm">
       <div className="flex flex-col gap-4 border-b border-orange-100 p-5">
@@ -1776,6 +1986,17 @@ export default function Admin() {
     analytics: renderAnalytics,
     settings: renderSettings,
     admins: renderAdmins,
+    "ticket-management": renderTickets,
+    "supply-management": renderSuppliers,
+    "supplier-management": renderSupplierManagement,
+    "vehicle-management": renderVehicleManagement,
+    "recharge-records": renderRechargeRecords,
+    "ticket-vouchers": renderTicketVouchers,
+    marketing: renderIpPricing,
+    leads: renderAnalytics,
+    "spu-config": renderSpuConfig,
+    "sku-config": renderSkuConfig,
+    "service-config": renderSettings,
   }[active] ?? renderDashboard;
 
   return (
