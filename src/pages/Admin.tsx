@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   Activity,
   BarChart3,
+  ChevronDown,
   CheckCircle2,
   CircleDollarSign,
   ClipboardList,
@@ -58,6 +59,23 @@ const menu = [
   { id: "settings", label: "站点设置", icon: Settings },
   { id: "admins", label: "管理员管理", icon: SlidersHorizontal },
 ];
+
+const sidebarGroups = [
+  { id: "dashboard", label: "欢迎页", icon: LayoutDashboard, hint: "首页数据" },
+  { id: "users", label: "用户管理", icon: SlidersHorizontal, hint: "用户资料 / 等级 / 风控" },
+  { id: "orders", label: "订单管理", icon: SlidersHorizontal, hint: "订单审核 / 发货" },
+  { id: "tickets", label: "工单管理", icon: SlidersHorizontal, hint: "售后客服工单" },
+  { id: "suppliers", label: "供应管理", icon: SlidersHorizontal, hint: "供应审核 / 规则" },
+  { id: "suppliers", label: "供应商管理", icon: SlidersHorizontal, hint: "供应商资料" },
+  { id: "inventory", label: "车辆管理", icon: SlidersHorizontal, hint: "车位 / 账号池" },
+  { id: "inventory", label: "代充值记录管理", icon: SlidersHorizontal, hint: "充值交付记录" },
+  { id: "orders", label: "车票管理", icon: SlidersHorizontal, hint: "凭证 / 卡密订单" },
+  { id: "ip-pricing", label: "营销管理", icon: SlidersHorizontal, hint: "IP 定价 / 活动" },
+  { id: "analytics", label: "线索管理", icon: SlidersHorizontal, hint: "访客行为明细" },
+  { id: "products", label: "SPU配置", icon: Settings, hint: "商品主体资料" },
+  { id: "products", label: "SKU配置", icon: SlidersHorizontal, hint: "价格 / 库存 / 标签" },
+  { id: "settings", label: "服务配置", icon: SlidersHorizontal, hint: "首页文案 / 站点设置" },
+] as const;
 
 const statusText: Record<string, string> = {
   enabled: "上架",
@@ -1763,28 +1781,51 @@ export default function Admin() {
   return (
     <div className="min-h-screen bg-[#fff7ed] text-slate-900">
       <div className="flex min-h-screen">
-        <aside className="hidden w-72 shrink-0 border-r border-orange-100 bg-white p-5 lg:block">
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-gradient-to-br from-orange-500 to-rose-600 text-xl font-black text-white">G</div>
-            <div><p className="text-lg font-black">GoAifast Admin</p><p className="text-xs text-slate-400">运营交付后台</p></div>
+        <aside className="hidden w-72 shrink-0 bg-[#00182b] text-slate-200 shadow-2xl lg:flex lg:flex-col">
+          <div className="border-b border-white/10 px-6 py-6">
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500 to-rose-600 text-xl font-black text-white shadow-lg shadow-orange-950/30">G</div>
+              <div>
+                <p className="text-lg font-black text-white">GoAifast</p>
+                <p className="text-xs text-slate-400">运营后台系统</p>
+              </div>
+            </div>
           </div>
-          <nav className="mt-8 space-y-1">
-            {menu.map((item) => {
+          <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-5">
+            {sidebarGroups.map((item, index) => {
               const Icon = item.icon;
               const selected = active === item.id;
               return (
-                <button key={item.id} onClick={() => setActive(item.id)} className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-bold transition ${selected ? "bg-orange-600 text-white shadow-sm" : "text-slate-600 hover:bg-orange-50 hover:text-orange-700"}`}>
-                  <Icon className="h-4 w-4" /> {item.label}
+                <button
+                  key={`${item.label}-${index}`}
+                  onClick={() => setActive(item.id)}
+                  title={item.hint}
+                  className={`group flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-[15px] font-bold transition ${
+                    selected
+                      ? "bg-white/10 text-white shadow-inner ring-1 ring-white/10"
+                      : "text-slate-300 hover:bg-white/5 hover:text-white"
+                  }`}
+                >
+                  <Icon className={`h-5 w-5 ${selected ? "text-white" : "text-slate-400 group-hover:text-white"}`} />
+                  <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                  <ChevronDown className={`h-4 w-4 shrink-0 transition ${selected ? "text-white rotate-180" : "text-slate-400"}`} />
                 </button>
               );
             })}
           </nav>
+          <div className="border-t border-white/10 px-5 py-4 text-xs text-slate-400">
+            <div className="flex items-center justify-between">
+              <span>数据库同步</span>
+              <span className="rounded-full bg-emerald-400/10 px-2 py-1 font-bold text-emerald-300">Supabase</span>
+            </div>
+            <p className="mt-2 truncate text-slate-500">前台内容 / 商品 / 库存联动</p>
+          </div>
         </aside>
 
         <main className="min-w-0 flex-1">
           <header className="sticky top-0 z-20 border-b border-orange-100 bg-white/90 px-4 py-4 backdrop-blur md:px-8">
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <div><h1 className="text-2xl font-black">{menu.find((item) => item.id === active)?.label}</h1><p className="text-sm text-slate-500">前后台联动演示 · 最后更新 {new Date(store.updatedAt).toLocaleString()}</p></div>
+              <div><h1 className="text-2xl font-black">{sidebarGroups.find((item) => item.id === active)?.label ?? menu.find((item) => item.id === active)?.label}</h1><p className="text-sm text-slate-500">前后台联动演示 · 最后更新 {new Date(store.updatedAt).toLocaleString()}</p></div>
               <div className="flex items-center gap-2">
                 <a href={import.meta.env.BASE_URL || "/"} className="rounded-lg border border-orange-200 px-3 py-2 text-sm font-bold text-orange-700 hover:bg-orange-50">打开前台</a>
                 <button onClick={syncCurrentStore} className="rounded-lg border border-orange-200 px-3 py-2 text-sm font-bold text-orange-700 hover:bg-orange-50">同步数据库</button>
@@ -1792,7 +1833,7 @@ export default function Admin() {
               </div>
             </div>
             <div className="mt-4 flex gap-2 overflow-x-auto lg:hidden">
-              {menu.map((item) => <button key={item.id} onClick={() => setActive(item.id)} className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-bold ${active === item.id ? "bg-orange-600 text-white" : "bg-orange-50 text-orange-700"}`}>{item.label}</button>)}
+              {sidebarGroups.map((item, index) => <button key={`${item.label}-${index}`} onClick={() => setActive(item.id)} className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-bold ${active === item.id ? "bg-orange-600 text-white" : "bg-orange-50 text-orange-700"}`}>{item.label}</button>)}
             </div>
           </header>
 
