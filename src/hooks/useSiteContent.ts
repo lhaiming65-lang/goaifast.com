@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   PUBLIC_STORE_KEY,
   defaultSiteContent,
@@ -19,6 +19,7 @@ function readCachedContent(): SiteContent {
 
 export function useSiteContent() {
   const [content, setContent] = useState<SiteContent>(() => readCachedContent());
+  const channelName = useRef(`go_site_settings:content:${Math.random().toString(36).slice(2)}`);
 
   useEffect(() => {
     let active = true;
@@ -28,14 +29,18 @@ export function useSiteContent() {
     };
 
     const load = async () => {
-      const { data } = await supabase
-        .from("go_site_settings" as never)
-        .select("settings_payload")
-        .eq("id", "default")
-        .maybeSingle();
-      if (!active) return;
-      const payload = (data as { settings_payload?: { content?: Partial<SiteContent> } } | null)?.settings_payload;
-      setContent(normalizeSiteContent(payload?.content));
+      try {
+        const { data } = await supabase
+          .from("go_site_settings" as never)
+          .select("settings_payload")
+          .eq("id", "default")
+          .maybeSingle();
+        if (!active) return;
+        const payload = (data as { settings_payload?: { content?: Partial<SiteContent> } } | null)?.settings_payload;
+        setContent(normalizeSiteContent(payload?.content));
+      } catch {
+        refreshFromCache();
+      }
     };
 
     load();
@@ -43,7 +48,7 @@ export function useSiteContent() {
     window.addEventListener("goaifast-store-updated", refreshFromCache as EventListener);
 
     const channel = supabase
-      .channel("go_site_settings:content")
+      .channel(channelName.current)
       .on("postgres_changes", { event: "*", schema: "public", table: "go_site_settings", filter: "id=eq.default" }, load)
       .subscribe();
 
